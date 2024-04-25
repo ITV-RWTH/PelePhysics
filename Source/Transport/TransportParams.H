@@ -71,6 +71,7 @@ struct TransParm<EOSType, SutherlandTransport>
   amrex::Real Prandtl_number{0.7};
   amrex::Real viscosity_mu_ref{17.16};
   amrex::Real viscosity_T_ref{273.15};
+  amrex::Real viscosity_power{1.5};
   amrex::Real viscosity_S{110.4};
   amrex::Real const_bulk_viscosity{0.0};
   amrex::Real const_diffusivity{1.0};
@@ -86,6 +87,7 @@ struct InitTransParm<EOSType, SutherlandTransport>
     pp.query("Prandtl_number", tparm->Prandtl_number);
     pp.query("viscosity_mu_ref", tparm->viscosity_mu_ref);
     pp.query("viscosity_T_ref", tparm->viscosity_T_ref);
+    pp.query("viscosity_power", tparm->viscosity_power);
     pp.query("viscosity_S", tparm->viscosity_S);
     pp.query("const_bulk_viscosity", tparm->const_bulk_viscosity);
     pp.query("const_diffusivity", tparm->const_diffusivity);
