@@ -423,9 +423,19 @@ def viscosity(fstream, mechanism, species_info, species_transport, ntfit):
             if int(species_transport[spec][0]) == 0:
                 cond = ((visc * ru / spec.weight)) * (5.0 / 2.0) * cv_trans_r
             else:
-                cond = ((visc * ru / spec.weight)) * (
-                    f_trans * cv_trans_r + f_rot * cv_rot_r + f_vib * cv_vib_r
-                )
+
+                # ------------------------------------------------------------------------------------------------------------
+                # The Eucken vs Warnatz formulation for thermal conductivity can be set here. The default is the Warnatz formualtion. Change the bool below to change the setting.
+                use_eucken = False
+
+                if not use_eucken:
+                    # Warnatz formualtion
+                    cond = ((visc * ru / spec.weight)) * ( f_trans * cv_trans_r + f_rot * cv_rot_r + f_vib * cv_vib_r )
+                else:
+                    # Eucken formualtion
+                    cond = visc * (cth.eval_cv_species(mechanism, spec, t) * ru + 9./4. * ru) / spec.weight
+                # ------------------------------------------------------------------------------------------------------------
+
 
             # log transformation for polyfit
             tlog.append(np.log(t))

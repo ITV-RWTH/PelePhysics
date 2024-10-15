@@ -75,6 +75,7 @@ struct TransParm<EOSType, SutherlandTransport>
   amrex::Real viscosity_S{110.4};
   amrex::Real const_bulk_viscosity{0.0};
   amrex::Real const_diffusivity{1.0};
+
   bool use_soret = false;
 };
 
@@ -113,6 +114,16 @@ struct TransParm<EOSType, SimpleTransport>
   amrex::GpuArray<int, 3> liteSpec = {0};
   amrex::GpuArray<amrex::Real, NUM_SPECIES* NUM_FIT* 3> fittdrat = {0.0};
   amrex::GpuArray<int, NUM_SPECIES> nlin = {0};
+
+  // Added settings for the mixture model
+  bool use_wilke_mixture = false;
+  bool use_mathur_mixture = false;
+
+  bool use_modelled_viscocity = false;
+  amrex::Real viscosity_mu_ref{17.16};
+  amrex::Real viscosity_T_ref{273.15};
+  amrex::Real viscosity_power{1.5};
+  amrex::Real viscosity_S{110.4};
 };
 
 template <typename EOSType>
@@ -132,6 +143,16 @@ struct InitTransParm<EOSType, SimpleTransport>
     egtransetCOFD(tparm->fitdbin.data());
     amrex::ParmParse pp("transport");
     pp.query("use_soret", tparm->use_soret);
+
+    pp.query("use_wilke_mixture", tparm->use_wilke_mixture);
+    pp.query("use_mathur_mixture", tparm->use_mathur_mixture);
+
+    pp.query("use_modelled_viscocity", tparm->use_modelled_viscocity);
+    pp.query("viscosity_mu_ref", tparm->viscosity_mu_ref);
+    pp.query("viscosity_T_ref", tparm->viscosity_T_ref);
+    pp.query("viscosity_power", tparm->viscosity_power);
+    pp.query("viscosity_S", tparm->viscosity_S);
+
     if (tparm->use_soret) {
       egtransetNLITE(&tparm->numLite);
       egtransetKTDIF(tparm->liteSpec.data());
