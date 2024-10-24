@@ -316,44 +316,47 @@ struct SimpleTransport
       Xloc[i] = Yloc[i] * wbar * tparm->iwt[i];
     }
     if (wtr_get_mu) {
-      for (int i = 0; i < NUM_SPECIES; ++i) {
-        muloc[i] = tparm->fitmu[4 * i] + tparm->fitmu[1 + 4 * i] * logT[0] +
-                   tparm->fitmu[2 + 4 * i] * logT[1] +
-                   tparm->fitmu[3 + 4 * i] * logT[2];
-        muloc[i] = std::exp(muloc[i]);
-      }
-
-
-      // Mixture model for the viscosity
+      
       mu = 0.0;
-      if(tparm->use_modelled_viscocity) {
-        // Use Sutherland Model for the mixture
+      if(tparm->use_sutherland_viscosity) {
+        // Use Sutherland Model for viscosity
         mu = tparm->viscosity_mu_ref *
            std::pow((Tloc / tparm->viscosity_T_ref), tparm->viscosity_power) *
            (tparm->viscosity_T_ref + tparm->viscosity_S) /
            (Tloc + tparm->viscosity_S);
 
-      } else if (tparm->use_wilke_mixture) {
-        // Using Wilke Mixture Model
+      } else 
+        // Default mixture averaging path
         for (int i = 0; i < NUM_SPECIES; ++i) {
-          amrex::Real Wilke_sum = 0.0;
-          for (int j = 0; j < NUM_SPECIES; ++j) {
-            amrex::Real Mi_Mj = tparm->iwt[j] / tparm->iwt[i];
-            amrex::Real phi_wilke = 1. / std::sqrt(8.) * std::pow(1. + std::sqrt(muloc[i] / muloc[j]) * std::sqrt(std::sqrt(1. / Mi_Mj)), 2) / std::sqrt(1. + Mi_Mj);
-            Wilke_sum += Yloc[j] * phi_wilke * Mi_Mj;
+          muloc[i] = tparm->fitmu[4 * i] + tparm->fitmu[1 + 4 * i] * logT[0] +
+                    tparm->fitmu[2 + 4 * i] * logT[1] +
+                    tparm->fitmu[3 + 4 * i] * logT[2];
+          muloc[i] = std::exp(muloc[i]);
+        }
+
+
+        // Mixture model for the viscosity
+        if (tparm->use_wilke_mixture) {
+          // Using Wilke Mixture Model
+          for (int i = 0; i < NUM_SPECIES; ++i) {
+            amrex::Real Wilke_sum = 0.0;
+            for (int j = 0; j < NUM_SPECIES; ++j) {
+              amrex::Real Mi_Mj = tparm->iwt[j] / tparm->iwt[i];
+              amrex::Real phi_wilke = 1. / std::sqrt(8.) * std::pow(1. + std::sqrt(muloc[i] / muloc[j]) * std::sqrt(std::sqrt(1. / Mi_Mj)), 2) / std::sqrt(1. + Mi_Mj);
+              Wilke_sum += Yloc[j] * phi_wilke * Mi_Mj;
+            }
+            mu += (Yloc[i] * muloc[i] / Wilke_sum);
           }
-          mu += (Yloc[i] * muloc[i] / Wilke_sum);
+        } else {
+          // Default Pele Mixture Model (Ern)
+          for (int i = 0; i < NUM_SPECIES; ++i) {
+            mu += Xloc[i] *
+                  (muloc[i] * muloc[i] * muloc[i] * muloc[i] * muloc[i] * muloc[i]);
+          }
+          mu = std::cbrt(std::sqrt(mu));
         }
-      } else {
-        // Default Pele Mixture Model
-        for (int i = 0; i < NUM_SPECIES; ++i) {
-          mu += Xloc[i] *
-                (muloc[i] * muloc[i] * muloc[i] * muloc[i] * muloc[i] * muloc[i]);
-        }
-        mu = std::cbrt(std::sqrt(mu));
-      }
 
-
+    }
 
       //  assumption that we only get bulk viscosity if we are already getting
       //  shear viscosity
