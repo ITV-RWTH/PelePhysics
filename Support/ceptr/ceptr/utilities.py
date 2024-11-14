@@ -3,9 +3,13 @@
 import copy
 from collections import Counter
 from math import isclose
+from math import log
+from math import exp
 
 import ceptr.constants as cc
 
+# Global constant for plog evaluation
+plog_pressure = None
 
 def intersection(lst1, lst2):
     """Return intersection of two lists."""
@@ -451,3 +455,46 @@ def enhancement_d(mechanism, species_info, reaction, syms=None):
         return " + ".join(alpha).replace("+ -", "- "), enhancement_smp
     else:
         return " + ".join(alpha).replace("+ -", "- ")
+
+
+def evaluate_plog(rates):
+    """Evaluation the rate constants for a PLOG reaction"""
+    # Ask for pressure on command line if not already done:
+    global plog_pressure
+    if plog_pressure is None:
+        plog_pressure = float(input("WARNING: Your mechanism contains at least one PLOG reaction.\n"
+                                    "WARNING: The compiled mechanism will only be valid for the given "
+                                    "constant pressure. It is not applicable for compressible solvers.\n\n"
+                                    "Please specify the pressure, at which you want to evaluate the rates "
+                                    f"in Pascal (1 atm = {cc.Patm_pa} Pa, 1 bar = 1e5 Pa):\n"))
+        print(f"plog_pressure set to {plog_pressure} Pa / {plog_pressure / 1e5} bar /.")
+        if plog_pressure < 1e3:
+            sys.exit("Provided plog_pressure too low.")  # To catch confusion about Pascal and bar/atm
+    if plog_pressure <= rates[0][0]:
+        # Case 1: plog_pressure <= lower bound -> take lower bound:
+        plog_reaction = rates[0][1]
+        pef = plog_reaction.pre_exponential_factor
+        beta = plog_reaction.temperature_exponent
+        ae = plog_reaction.activation_energy
+        return pef, beta, ae
+    elif plog_pressure >= rates[-1][0]:
+        # Case 2: plog_pressure >= upper bound -> take upper bound:
+        plog_reaction = rates[-1][1]
+        pef = plog_reaction.pre_exponential_factor
+        beta = plog_reaction.temperature_exponent
+        ae = plog_reaction.activation_energy
+        return pef, beta, ae
+    else:
+        # Case 3: lower bound < plog_pressure < upper bound -> logarithmic interpolation:
+        for plog_p_i in range(len(rates) - 1):
+            if rates[plog_p_i][0] <= plog_pressure < rates[plog_p_i + 1][0]:
+                # print(f"Interpolation between {rates[plog_p_i][0]} Pa and {rates[plog_p_i + 1][0]} Pa.")
+                rate_low = rates[plog_p_i][1]
+                rate_high = rates[plog_p_i + 1][1]
+                interp_fac = (log(plog_pressure) - log(rates[plog_p_i][0])) / (
+                            log(rates[plog_p_i + 1][0]) - log(rates[plog_p_i][0]))
+                pef = exp(log(rate_low.pre_exponential_factor) * (1 - interp_fac) + log(rate_high.pre_exponential_factor) * interp_fac)
+                beta = rate_low.temperature_exponent * (1 - interp_fac) + rate_high.temperature_exponent * interp_fac
+                ae = rate_low.activation_energy * (1 - interp_fac) + rate_high.activation_energy * interp_fac
+                return pef, beta, ae
+
