@@ -2,9 +2,7 @@
 
 import copy
 from collections import Counter
-from math import isclose
-from math import log
-from math import exp
+from math import exp, isclose, log
 
 import ceptr.constants as cc
 
@@ -459,7 +457,7 @@ def enhancement_d(mechanism, species_info, reaction, syms=None):
 
 
 def evaluate_plog(rates):
-    """Evaluation the rate constants for a PLOG reaction"""
+    """Evaluate rate constants for a PLOG reaction."""
     # Ask for pressure on command line if not already done:
     global plog_pressure
     if plog_pressure is None:
@@ -474,7 +472,7 @@ def evaluate_plog(rates):
         )
         print(f"plog_pressure set to {plog_pressure} Pa / {plog_pressure / 1e5} bar /.")
         if plog_pressure < 1e3:
-            sys.exit(
+            raise ValueError(
                 "Provided plog_pressure too low."
             )  # To catch confusion about Pascal and bar/atm
     if plog_pressure <= rates[0][0]:
@@ -495,7 +493,6 @@ def evaluate_plog(rates):
         # Case 3: lower bound < plog_pressure < upper bound -> logarithmic interpolation:
         for plog_p_i in range(len(rates) - 1):
             if rates[plog_p_i][0] <= plog_pressure < rates[plog_p_i + 1][0]:
-                # print(f"Interpolation between {rates[plog_p_i][0]} Pa and {rates[plog_p_i + 1][0]} Pa.")
                 rate_low = rates[plog_p_i][1]
                 rate_high = rates[plog_p_i + 1][1]
                 interp_fac = (log(plog_pressure) - log(rates[plog_p_i][0])) / (
