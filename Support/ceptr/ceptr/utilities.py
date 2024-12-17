@@ -6,9 +6,6 @@ from math import exp, isclose, log
 
 import ceptr.constants as cc
 
-# Global constant for plog evaluation
-plog_pressure = None
-
 
 def intersection(lst1, lst2):
     """Return intersection of two lists."""
@@ -456,25 +453,8 @@ def enhancement_d(mechanism, species_info, reaction, syms=None):
         return " + ".join(alpha).replace("+ -", "- ")
 
 
-def evaluate_plog(rates):
+def evaluate_plog(rates, plog_pressure):
     """Evaluate rate constants for a PLOG reaction."""
-    # Ask for pressure on command line if not already done:
-    global plog_pressure
-    if plog_pressure is None:
-        plog_pressure = float(
-            input(
-                "WARNING: Your mechanism contains at least one PLOG reaction.\n"
-                "WARNING: The compiled mechanism will only be valid for the given "
-                "constant pressure. It is not applicable for compressible solvers.\n\n"
-                "Please specify the pressure, at which you want to evaluate the rates "
-                f"in Pascal (1 atm = {cc.Patm_pa} Pa, 1 bar = 1e5 Pa):\n"
-            )
-        )
-        print(f"plog_pressure set to {plog_pressure} Pa / {plog_pressure / 1e5} bar /.")
-        if plog_pressure < 1e3:
-            raise ValueError(
-                "Provided plog_pressure too low."
-            )  # To catch confusion about Pascal and bar/atm
     if plog_pressure <= rates[0][0]:
         # Case 1: plog_pressure <= lower bound -> take lower bound:
         plog_reaction = rates[0][1]

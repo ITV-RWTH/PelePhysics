@@ -595,7 +595,9 @@ def ajac_reaction_d(
             cw.comment("a non-third-body and non-pressure-fall-off reaction (PLOG)"),
         )
         ctuc = cu.prefactor_units(cc.ureg("kmol/m**3"), 1 - dim)
-        plog_pef, plog_beta, plog_ae = cu.evaluate_plog(reaction.rate.rates)
+        plog_pef, plog_beta, plog_ae = cu.evaluate_plog(
+            reaction.rate.rates, mechanism.P
+        )
         pef = (plog_pef * ctuc).to_base_units()
         beta = plog_beta
         ae = (plog_ae * cc.ureg.joule / cc.ureg.kmol).to(aeuc)
