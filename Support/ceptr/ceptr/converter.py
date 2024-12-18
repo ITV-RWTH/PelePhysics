@@ -101,6 +101,10 @@ class Converter:
             plog_folder = f"{plog_pressure/cc.Patm_pa:0.3f}atm".replace(".", "_")
             if not os.path.isdir(self.mechpath.parents[0] / plog_folder):
                 os.makedirs(self.mechpath.parents[0] / plog_folder)
+                # Copy the Make.package file into the new folder
+                source = self.mechpath.parents[0] / "Make.package"
+                destination = self.mechpath.parents[0] / plog_folder / "Make.package"
+                shutil.copy(source, destination)
             self.rootname = f"{plog_folder}/mechanism"
         else:
             self.rootname = "mechanism"
