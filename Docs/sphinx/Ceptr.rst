@@ -66,9 +66,9 @@ There are three ways to use CEPTR to generate C++ mechanism files for a given ch
 
    .. note:: CEPTR offers only partial support for mechanisms with pressure-dependent Arrhenius (PLOG) reactions.
              These reactions are fixed to a constant pressure, specified with the ``--plog_pressure`` argument,
-             in the CEPTR-generated source code. Mechanims with PLOG reactions generated in this way are limited
+             in the CEPTR-generated source code. Mechanisms with PLOG reactions generated in this way are limited
              in validity to that specific pressure and would not be suitable for compressible flows with significant
-             pressure variation. For that reason, these mechanism source code is saved in pressure-specific directories, for
+             pressure variation. For that reason, source code for these mechanisms is saved in pressure-specific directories, for
              example ``${PELE_PHYSICS_HOME}/Mechanisms/POLIMI2020/1_000atm/``.
 
 
