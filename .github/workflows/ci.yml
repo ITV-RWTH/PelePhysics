@@ -13,30 +13,30 @@ concurrency:
 
 jobs:
   Formatting:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Clone
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Check formatting
-        uses: DoozyX/clang-format-lint-action@v0.16.2
+        uses: DoozyX/clang-format-lint-action@v0.18.2
         with:
           source: './Source ./Testing ./Mechanisms'
           exclude: '.'
           extensions: 'H,h,cpp'
-          clangFormatVersion: 16
+          clangFormatVersion: 18
 
   Codespell:
     needs: Formatting
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Clone
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           submodules: false
       - name: Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
-          python-version: '3.10'
+          python-version: '3.11'
       - name: Dependencies
         run: |
           # Install Python packages
@@ -46,18 +46,18 @@ jobs:
         run: codespell
 
   CEPTR:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
-        python-version: ['3.10']
+        python-version: ['3.10', '3.11']
         poetry-version: ['1.4.2']
     defaults:
       run:
         working-directory: ${{github.workspace}}/Support/ceptr
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-python@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: ${{matrix.python-version}}
       - name: Run image
@@ -81,11 +81,11 @@ jobs:
 
   Transport-EOS-Reactions:
     needs: Formatting
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-24.04
     strategy:
       matrix:
         comp: [gnu, llvm, cuda, hip, sycl]
-        python-version: ['3.10']
+        python-version: ['3.11']
         poetry-version: ['1.4.2']
         include:
           - comp: gnu
@@ -104,8 +104,8 @@ jobs:
             amrex_build_args: 'USE_SYCL=TRUE'
             dependency_cmds: '.github/workflows/dependencies/dependencies_dpcpp.sh'
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-python@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: ${{matrix.python-version}}
       - name: Run image
@@ -113,7 +113,7 @@ jobs:
         with:
           poetry-version: ${{matrix.poetry-version}}
       - name: Clone PelePhysics
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           path: PelePhysics-${{matrix.comp}}
           submodules: recursive
@@ -131,9 +131,9 @@ jobs:
           echo "CCACHE_LOGFILE=${{github.workspace}}/ccache.log.txt" >> $GITHUB_ENV
           echo "CCACHE_MAXSIZE=1G" >> $GITHUB_ENV
           if [ "${{matrix.comp}}" == 'cuda' ]; then \
-            echo "CUDA_HOME=/usr/local/cuda-11.2" >> $GITHUB_ENV; \
-            echo "LD_LIBRARY_PATH=/usr/local/cuda-11.2/lib64:${LD_LIBRARY_PATH}" >> $GITHUB_ENV; \
-            echo "/usr/local/cuda-11.2/bin" >> $GITHUB_PATH; \
+            echo "CUDA_HOME=/usr/local/cuda-12.6" >> $GITHUB_ENV; \
+            echo "LD_LIBRARY_PATH=/usr/local/cuda-12.6/lib64:${LD_LIBRARY_PATH}" >> $GITHUB_ENV; \
+            echo "/usr/local/cuda-12.6/bin" >> $GITHUB_PATH; \
           fi
       - name: Install Ccache
         run: |
@@ -141,7 +141,7 @@ jobs:
           tar xvf ccache-4.8-linux-x86_64.tar.xz
           sudo cp -f ccache-4.8-linux-x86_64/ccache /usr/local/bin/
       - name: Set Up Ccache
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: ~/.cache/ccache
           key: ccache-${{github.workflow}}-${{github.job}}-${{matrix.comp}}-git-${{github.sha}}
@@ -150,6 +150,7 @@ jobs:
       - name: Dependencies
         working-directory: ${{env.TRANSPORT_WORKING_DIRECTORY}}
         run: |
+          ${{github.workspace}}/PelePhysics-${{matrix.comp}}/Submodules/amrex/.github/workflows/dependencies/ubuntu_free_disk_space.sh
           if [ "${{matrix.comp}}" == 'cuda' ]; then \
             ${{github.workspace}}/PelePhysics-${{matrix.comp}}/${{matrix.dependency_cmds}}; \
             echo "CUDA_HOME=${CUDA_HOME}"; \
@@ -180,11 +181,18 @@ jobs:
           if [ "${{matrix.comp}}" == 'hip' ]; then source /etc/profile.d/rocm.sh; fi;
           if [ "${{matrix.comp}}" == 'sycl' ]; then source /opt/intel/oneapi/setvars.sh || true; fi;
           ccache -z
-          for TYPE in Constant Simple Sutherland; do \
+          for TYPE in Constant Simple Sutherland Manifold; do \
             printf "\n-------- ${TYPE} --------\n"; \
-            make -j ${{env.NPROCS}} Transport_Model=${TYPE} TINY_PROFILE=TRUE USE_CCACHE=TRUE ${{matrix.amrex_build_args}}; \
+            if [ "${TYPE}" == 'Manifold' ]; then EOSMODEL=Manifold; else EOSMODEL=Fuego; fi; \
+            if [ "${TYPE}" == 'Manifold' ]; then CHEMISTRY=Null; else CHEMISTRY=air; fi; \
+            if [ "${TYPE}" != 'Manifold' ] || [ "${{matrix.comp}}" != 'sycl' ]; then \
+              make -j ${{env.NPROCS}} Eos_Model=${EOSMODEL} Chemistry_Model=${CHEMISTRY} Transport_Model=${TYPE} TINY_PROFILE=TRUE USE_CCACHE=TRUE ${{matrix.amrex_build_args}}; \
+            fi; \
             if [ "${{matrix.comp}}" == 'gnu' ] || [ "${{matrix.comp}}" == 'llvm' ]; then \
               ./Pele2d.${{matrix.comp}}.TPROF.ex inputs.2d_${TYPE}; \
+              if [ "${TYPE}" == 'Manifold' ]; then \
+                 ./Pele2d.${{matrix.comp}}.TPROF.ex inputs.2d_Network
+              fi; \
             fi; \
             make realclean; \
             if [ $? -ne 0 ]; then exit 1; fi; \
@@ -201,13 +209,19 @@ jobs:
           if [ "${{matrix.comp}}" == 'hip' ]; then source /etc/profile.d/rocm.sh; fi;
           if [ "${{matrix.comp}}" == 'sycl' ]; then source /opt/intel/oneapi/setvars.sh || true; fi;
           ccache -z
-          for TYPE in Fuego GammaLaw Soave-Redlich-Kwong; do \
+          for TYPE in Fuego GammaLaw Soave-Redlich-Kwong Manifold; do \
             if [ "${TYPE}" == 'Fuego' ] || [ "${TYPE}" == 'Soave-Redlich-Kwong' ]; then CHEMISTRY=LiDryer; else CHEMISTRY=Null; fi; \
             if [ "${TYPE}" == 'Soave-Redlich-Kwong' ]; then TRANSPORT=Simple; else TRANSPORT=Constant; fi; \
+            if [ "${TYPE}" == 'Manifold' ]; then INPUTFILE=inputs.2d.table2d; else INPUTFILE=inputs.2d; fi; \
             printf "\n-------- ${TYPE} --------\n"; \
-            make -j ${{env.NPROCS}} Eos_Model=${TYPE} Chemistry_Model=${CHEMISTRY} Transport_Model=${TRANSPORT} TINY_PROFILE=TRUE USE_CCACHE=TRUE ${{matrix.amrex_build_args}}; \
+            if [ "${TYPE}" != 'Manifold' ] || [ "${{matrix.comp}}" != 'sycl' ]; then \
+              make -j ${{env.NPROCS}} Eos_Model=${TYPE} Chemistry_Model=${CHEMISTRY} Transport_Model=${TRANSPORT} TINY_PROFILE=TRUE USE_CCACHE=TRUE ${{matrix.amrex_build_args}}; \
+            fi; \
             if [ "${{matrix.comp}}" == 'gnu' ] || [ "${{matrix.comp}}" == 'llvm' ]; then \
-              ./Pele2d.${{matrix.comp}}.TPROF.ex inputs.2d; \
+              ./Pele2d.${{matrix.comp}}.TPROF.ex ${INPUTFILE}; \
+              if [ "${TYPE}" == 'Manifold' ]; then \
+                 ./Pele2d.${{matrix.comp}}.TPROF.ex inputs.2d.network
+              fi; \
             fi; \
             make realclean; \
             if [ $? -ne 0 ]; then exit 1; fi; \
@@ -258,8 +272,14 @@ jobs:
               pip install numpy
               ccache -z
               make -j ${{env.NPROCS}} Eos_Model=Fuego Chemistry_Model=dodecane_lu TINY_PROFILE=TRUE USE_CCACHE=TRUE ${{matrix.amrex_build_args}}
-              bash exec_ignDelay.sh
+              bash exec_ignDelay.sh firstpass
               python check_ignDelay.py
+              if [ $? -ne 0 ]; then exit 1; fi; \
+              rm log PPreaction.txt inputs/inputs.0d_refine
+              make realclean
+              make -j ${{env.NPROCS}} Eos_Model=Manifold Transport_Model=Manifold Manifold_Dim=1 Chemistry_Model=Null TINY_PROFILE=TRUE USE_CCACHE=TRUE ${{matrix.amrex_build_args}}
+              bash exec_ignDelay.sh manifold
+              python check_ignDelay.py 0.0766 10
               if [ $? -ne 0 ]; then exit 1; fi; \
           fi;
           make realclean

@@ -87,24 +87,29 @@ ReactorArkode::init(int reactor_type, int /*ncells*/)
 
   switch (rk_controller) {
   case 0:
-    rk_controller = ARK_ADAPT_PID;
     controller_string = "PID";
+    sun_controller =
+      SUNAdaptController_PID(*amrex::sundials::The_Sundials_Context());
     break;
   case 1:
-    rk_controller = ARK_ADAPT_PI;
     controller_string = "PI";
+    sun_controller =
+      SUNAdaptController_PI(*amrex::sundials::The_Sundials_Context());
     break;
   case 2:
-    rk_controller = ARK_ADAPT_I;
     controller_string = "I";
+    sun_controller =
+      SUNAdaptController_I(*amrex::sundials::The_Sundials_Context());
     break;
   case 3:
-    rk_controller = ARK_ADAPT_EXP_GUS;
     controller_string = "explicit Gustafsson";
+    sun_controller =
+      SUNAdaptController_ExpGus(*amrex::sundials::The_Sundials_Context());
     break;
   default:
-    rk_controller = ARK_ADAPT_PID;
     controller_string = "PID";
+    sun_controller =
+      SUNAdaptController_PID(*amrex::sundials::The_Sundials_Context());
     break;
   }
 
@@ -161,13 +166,13 @@ ReactorArkode::react(
   // Solution vector and execution policy
 #ifdef AMREX_USE_GPU
   auto y = utils::setNVectorGPU(neq_tot, atomic_reductions, stream);
-  realtype* yvec_d = N_VGetDeviceArrayPointer(y);
+  sunrealtype* yvec_d = N_VGetDeviceArrayPointer(y);
 #else
   N_Vector y = N_VNew_Serial(neq_tot, *amrex::sundials::The_Sundials_Context());
   if (utils::check_flag(static_cast<void*>(y), "N_VNew_Serial", 0) != 0) {
     return (1);
   }
-  realtype* yvec_d = N_VGetArrayPointer(y);
+  sunrealtype* yvec_d = N_VGetArrayPointer(y);
 #endif
 
   const auto captured_reactor_type = m_reactor_type;
@@ -187,36 +192,38 @@ ReactorArkode::react(
     box, ncells, rY_in, rYsrc_in, T_in, rEner_in, rEner_src_in, yvec_d,
     user_data->rYsrc_ext, user_data->rhoe_init, user_data->rhoesrc_ext);
 
-  realtype time_init = time;
-  realtype time_out = time + dt_react;
+  sunrealtype time_init = time;
+  sunrealtype time_out = time + dt_react;
 
   void* arkode_mem = nullptr;
   if (use_erkstep == 0) {
     arkode_mem = ARKStepCreate(
       cF_RHS, nullptr, time, y, *amrex::sundials::The_Sundials_Context());
-    ARKStepSetUserData(arkode_mem, static_cast<void*>(user_data));
+    ARKodeSetUserData(arkode_mem, static_cast<void*>(user_data));
     utils::set_sundials_solver_tols<Ordering>(
       *amrex::sundials::The_Sundials_Context(), arkode_mem, user_data->ncells,
       relTol, absTol, m_typ_vals, "arkstep", verbose);
     ARKStepSetTableNum(
       arkode_mem, ARKODE_DIRK_NONE, static_cast<ARKODE_ERKTableID>(rk_method));
-    ARKStepSetAdaptivityMethod(arkode_mem, rk_controller, 1, 0, nullptr);
+    int flag = ARKodeSetAdaptController(arkode_mem, sun_controller);
+    utils::check_flag(&flag, "ARKodeSetAdaptController", 1);
     BL_PROFILE_VAR(
       "Pele::ReactorArkode::react():ARKStepEvolve", AroundARKEvolve);
-    ARKStepEvolve(arkode_mem, time_out, y, &time_init, ARK_NORMAL);
+    ARKodeEvolve(arkode_mem, time_out, y, &time_init, ARK_NORMAL);
     BL_PROFILE_VAR_STOP(AroundARKEvolve);
   } else {
     arkode_mem =
       ERKStepCreate(cF_RHS, time, y, *amrex::sundials::The_Sundials_Context());
-    ERKStepSetUserData(arkode_mem, static_cast<void*>(user_data));
+    ARKodeSetUserData(arkode_mem, static_cast<void*>(user_data));
     utils::set_sundials_solver_tols<Ordering>(
       *amrex::sundials::The_Sundials_Context(), arkode_mem, user_data->ncells,
       relTol, absTol, m_typ_vals, "erkstep", verbose);
     ERKStepSetTableNum(arkode_mem, static_cast<ARKODE_ERKTableID>(rk_method));
-    ERKStepSetAdaptivityMethod(arkode_mem, rk_controller, 1, 0, nullptr);
+    int flag = ARKodeSetAdaptController(arkode_mem, sun_controller);
+    utils::check_flag(&flag, "ARKodeSetAdaptController", 1);
     BL_PROFILE_VAR(
       "Pele::ReactorArkode::react():ERKStepEvolve", AroundERKEvolve);
-    ERKStepEvolve(arkode_mem, time_out, y, &time_init, ARK_NORMAL);
+    ARKodeEvolve(arkode_mem, time_out, y, &time_init, ARK_NORMAL);
     BL_PROFILE_VAR_STOP(AroundERKEvolve);
   }
 
@@ -225,12 +232,8 @@ ReactorArkode::react(
   time = time_init;
 #endif
 
-  long int nfe, nfi;
-  if (use_erkstep == 0) {
-    ARKStepGetNumRhsEvals(arkode_mem, &nfe, &nfi);
-  } else {
-    ERKStepGetNumRhsEvals(arkode_mem, &nfe);
-  }
+  long int nfe;
+  ARKodeGetNumRhsEvals(arkode_mem, 0, &nfe);
 
   if (user_data->verbose > 1) {
     print_final_stats(arkode_mem);
@@ -243,11 +246,7 @@ ReactorArkode::react(
     user_data->rhoe_init, d_nfe, dt_react);
 
   N_VDestroy(y);
-  if (use_erkstep == 0) {
-    ARKStepFree(&arkode_mem);
-  } else {
-    ERKStepFree(&arkode_mem);
-  }
+  ARKodeFree(&arkode_mem);
 
   delete user_data;
 
@@ -261,12 +260,12 @@ ReactorArkode::react(
 // React for 1d array
 int
 ReactorArkode::react(
-  realtype* rY_in,
-  realtype* rYsrc_in,
-  realtype* rX_in,
-  realtype* rX_src_in,
-  realtype& dt_react,
-  realtype& time,
+  sunrealtype* rY_in,
+  sunrealtype* rYsrc_in,
+  sunrealtype* rX_in,
+  sunrealtype* rX_src_in,
+  sunrealtype& dt_react,
+  sunrealtype& time,
   int ncells
 #ifdef AMREX_USE_GPU
   ,
@@ -284,13 +283,13 @@ ReactorArkode::react(
 
 #ifdef AMREX_USE_GPU
   auto y = utils::setNVectorGPU(neq_tot, atomic_reductions, stream);
-  realtype* yvec_d = N_VGetDeviceArrayPointer(y);
+  sunrealtype* yvec_d = N_VGetDeviceArrayPointer(y);
 #else
   N_Vector y = N_VNew_Serial(neq_tot, *amrex::sundials::The_Sundials_Context());
   if (utils::check_flag(static_cast<void*>(y), "N_VNew_Serial", 0) != 0) {
     return (1);
   }
-  realtype* yvec_d = N_VGetArrayPointer(y);
+  sunrealtype* yvec_d = N_VGetArrayPointer(y);
 #endif
 
   const auto captured_reactor_type = m_reactor_type;
@@ -308,46 +307,48 @@ ReactorArkode::react(
 
 #ifdef AMREX_USE_GPU
   amrex::Gpu::htod_memcpy_async(
-    yvec_d, rY_in, sizeof(realtype) * (neq * ncells));
+    yvec_d, rY_in, sizeof(sunrealtype) * (neq * ncells));
   amrex::Gpu::htod_memcpy_async(
-    user_data->rYsrc_ext, rYsrc_in, (NUM_SPECIES * ncells) * sizeof(realtype));
+    user_data->rYsrc_ext, rYsrc_in,
+    (NUM_SPECIES * ncells) * sizeof(sunrealtype));
   amrex::Gpu::htod_memcpy_async(
-    user_data->rhoe_init, rX_in, sizeof(realtype) * ncells);
+    user_data->rhoe_init, rX_in, sizeof(sunrealtype) * ncells);
   amrex::Gpu::htod_memcpy_async(
-    user_data->rhoesrc_ext, rX_src_in, sizeof(realtype) * ncells);
+    user_data->rhoesrc_ext, rX_src_in, sizeof(sunrealtype) * ncells);
 #else
-  std::memcpy(yvec_d, rY_in, sizeof(realtype) * (neq * ncells));
+  std::memcpy(yvec_d, rY_in, sizeof(sunrealtype) * (neq * ncells));
   std::memcpy(
-    user_data->rYsrc_ext, rYsrc_in, (NUM_SPECIES * ncells) * sizeof(realtype));
-  std::memcpy(user_data->rhoe_init, rX_in, sizeof(realtype) * ncells);
-  std::memcpy(user_data->rhoesrc_ext, rX_src_in, sizeof(realtype) * ncells);
+    user_data->rYsrc_ext, rYsrc_in,
+    (NUM_SPECIES * ncells) * sizeof(sunrealtype));
+  std::memcpy(user_data->rhoe_init, rX_in, sizeof(sunrealtype) * ncells);
+  std::memcpy(user_data->rhoesrc_ext, rX_src_in, sizeof(sunrealtype) * ncells);
 #endif
 
-  realtype time_init = time;
-  realtype time_out = time + dt_react;
+  sunrealtype time_init = time;
+  sunrealtype time_out = time + dt_react;
 
   void* arkode_mem = nullptr;
   if (use_erkstep == 0) {
     arkode_mem = ARKStepCreate(
       cF_RHS, nullptr, time, y, *amrex::sundials::The_Sundials_Context());
-    ARKStepSetUserData(arkode_mem, static_cast<void*>(user_data));
+    ARKodeSetUserData(arkode_mem, static_cast<void*>(user_data));
     utils::set_sundials_solver_tols<Ordering>(
       *amrex::sundials::The_Sundials_Context(), arkode_mem, user_data->ncells,
       relTol, absTol, m_typ_vals, "arkstep", verbose);
     BL_PROFILE_VAR(
       "Pele::ReactorArkode::react():ARKStepEvolve", AroundARKEvolve);
-    ARKStepEvolve(arkode_mem, time_out, y, &time_init, ARK_NORMAL);
+    ARKodeEvolve(arkode_mem, time_out, y, &time_init, ARK_NORMAL);
     BL_PROFILE_VAR_STOP(AroundARKEvolve);
   } else {
     arkode_mem =
       ERKStepCreate(cF_RHS, time, y, *amrex::sundials::The_Sundials_Context());
-    ERKStepSetUserData(arkode_mem, static_cast<void*>(user_data));
+    ARKodeSetUserData(arkode_mem, static_cast<void*>(user_data));
     utils::set_sundials_solver_tols<Ordering>(
       *amrex::sundials::The_Sundials_Context(), arkode_mem, user_data->ncells,
       relTol, absTol, m_typ_vals, "erkstep", verbose);
     BL_PROFILE_VAR(
       "Pele::ReactorArkode::react():ERKStepEvolve", AroundERKEvolve);
-    ERKStepEvolve(arkode_mem, time_out, y, &time_init, ARK_NORMAL);
+    ARKodeEvolve(arkode_mem, time_out, y, &time_init, ARK_NORMAL);
     BL_PROFILE_VAR_STOP(AroundERKEvolve);
   }
 #ifdef MOD_REACTOR
@@ -360,28 +361,20 @@ ReactorArkode::react(
 #else
   std::memcpy(
 #endif
-    rY_in, yvec_d, (neq * ncells) * sizeof(realtype));
+    rY_in, yvec_d, (neq * ncells) * sizeof(sunrealtype));
   for (int i = 0; i < ncells; i++) {
     rX_in[i] = rX_in[i] + dt_react * rX_src_in[i];
   }
 
-  long int nfe, nfi;
-  if (use_erkstep == 0) {
-    ARKStepGetNumRhsEvals(arkode_mem, &nfe, &nfi);
-  } else {
-    ERKStepGetNumRhsEvals(arkode_mem, &nfe);
-  }
+  long int nfe;
+  ARKodeGetNumRhsEvals(arkode_mem, 0, &nfe);
 
   if (user_data->verbose > 1) {
     print_final_stats(arkode_mem);
   }
 
   N_VDestroy(y);
-  if (use_erkstep == 0) {
-    ARKStepFree(&arkode_mem);
-  } else {
-    ERKStepFree(&arkode_mem);
-  }
+  ARKodeFree(&arkode_mem);
 
   delete user_data;
 
@@ -390,15 +383,15 @@ ReactorArkode::react(
 
 int
 ReactorArkode::cF_RHS(
-  realtype t, N_Vector y_in, N_Vector ydot_in, void* user_data)
+  sunrealtype t, N_Vector y_in, N_Vector ydot_in, void* user_data)
 {
   BL_PROFILE("Pele::ReactorArkode::cF_RHS()");
 #ifdef AMREX_USE_GPU
-  realtype* yvec_d = N_VGetDeviceArrayPointer(y_in);
-  realtype* ydot_d = N_VGetDeviceArrayPointer(ydot_in);
+  sunrealtype* yvec_d = N_VGetDeviceArrayPointer(y_in);
+  sunrealtype* ydot_d = N_VGetDeviceArrayPointer(ydot_in);
 #else
-  realtype* yvec_d = N_VGetArrayPointer(y_in);
-  realtype* ydot_d = N_VGetArrayPointer(ydot_in);
+  sunrealtype* yvec_d = N_VGetArrayPointer(y_in);
+  sunrealtype* ydot_d = N_VGetArrayPointer(ydot_in);
 #endif
 
   auto* udata = static_cast<ARKODEUserData*>(user_data);
@@ -424,29 +417,17 @@ ReactorArkode::cF_RHS(
 void
 ReactorArkode::print_final_stats(void* arkode_mem)
 {
-  long int nst, nst_a, netf, nfe, nfi;
+  long int nst, nst_a, netf, nfe;
   int flag;
 
-  if (use_erkstep != 0) {
-    flag = ERKStepGetNumSteps(arkode_mem, &nst);
-    utils::check_flag(&flag, "ERKStepGetNumSteps", 1);
-    flag = ERKStepGetNumStepAttempts(arkode_mem, &nst_a);
-    utils::check_flag(&flag, "ERKStepGetNumStepAttempts", 1);
-    flag = ERKStepGetNumErrTestFails(arkode_mem, &netf);
-    utils::check_flag(&flag, "ERKStepGetNumErrTestFails", 1);
-    flag = ERKStepGetNumRhsEvals(arkode_mem, &nfe);
-    utils::check_flag(&flag, "ERKStepGetNumRhsEvals", 1);
-
-  } else {
-    flag = ARKStepGetNumSteps(arkode_mem, &nst);
-    utils::check_flag(&flag, "ARKStepGetNumSteps", 1);
-    flag = ARKStepGetNumStepAttempts(arkode_mem, &nst_a);
-    utils::check_flag(&flag, "ARKStepGetNumStepAttempts", 1);
-    flag = ARKStepGetNumErrTestFails(arkode_mem, &netf);
-    utils::check_flag(&flag, "ARKStepGetNumErrTestFails", 1);
-    flag = ARKStepGetNumRhsEvals(arkode_mem, &nfe, &nfi);
-    utils::check_flag(&flag, "ARKStepGetNumRhsEvals", 1);
-  }
+  flag = ARKodeGetNumSteps(arkode_mem, &nst);
+  utils::check_flag(&flag, "ARKodeGetNumSteps", 1);
+  flag = ARKodeGetNumStepAttempts(arkode_mem, &nst_a);
+  utils::check_flag(&flag, "ARKodeGetNumStepAttempts", 1);
+  flag = ARKodeGetNumErrTestFails(arkode_mem, &netf);
+  utils::check_flag(&flag, "ARKodeGetNumErrTestFails", 1);
+  flag = ARKodeGetNumRhsEvals(arkode_mem, 0, &nfe);
+  utils::check_flag(&flag, "ARKodeGetNumRhsEvals", 1);
 
 #ifdef AMREX_USE_OMP
   amrex::Print() << "\nFinal Statistics: "
