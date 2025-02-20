@@ -4,9 +4,11 @@
 #include <AMReX_REAL.H>
 #include <AMReX_ParmParse.H>
 #include "TransportTypes.H"
+#include "PeleParamsGeneric.H"
 #include "EOS.H"
 
-namespace pele::physics::transport {
+namespace pele::physics {
+namespace transport {
 
 struct ConstTransport;
 struct SimpleTransport;
@@ -15,12 +17,6 @@ struct SutherlandTransport;
 template <typename EOSType, typename TransportType>
 struct TransParm
 {
-};
-
-template <typename EOSType, typename TransportType>
-struct InitTransParm
-{
-  void operator()(TransParm<EOSType, TransportType> /*tparm*/) {}
 };
 
 template <typename EOSType>
@@ -35,10 +31,99 @@ struct TransParm<EOSType, ConstTransport>
 };
 
 template <typename EOSType>
-struct InitTransParm<EOSType, ConstTransport>
+struct TransParm<EOSType, SutherlandTransport>
 {
-  void operator()(TransParm<EOSType, ConstTransport>* tparm)
+  amrex::Real Prandtl_number{0.7};
+  amrex::Real viscosity_mu_ref{17.16e-5};
+  amrex::Real viscosity_T_ref{273.15};
+  amrex::Real viscosity_power{1.5};
+  amrex::Real viscosity_S{110.4};
+  amrex::Real const_bulk_viscosity{0.0};
+  amrex::Real const_diffusivity{1.0};
+  bool use_soret = false;
+};
+
+template <typename EOSType>
+struct TransParm<EOSType, ManifoldTransport>
+{
+  const BlackBoxFunctionData* manf_data;
+  int idx_rhoD{0};
+  int idx_mu{0};
+};
+
+template <typename EOSType>
+struct TransParm<EOSType, SimpleTransport>
+{
+  amrex::GpuArray<amrex::Real, NUM_SPECIES> wt = {0.0};
+  amrex::GpuArray<amrex::Real, NUM_SPECIES> iwt = {0.0};
+  amrex::GpuArray<amrex::Real, NUM_SPECIES> eps = {0.0};
+  amrex::GpuArray<amrex::Real, NUM_SPECIES> sig = {0.0};
+  amrex::GpuArray<amrex::Real, NUM_SPECIES> dip = {0.0};
+  amrex::GpuArray<amrex::Real, NUM_SPECIES> pol = {0.0};
+  amrex::GpuArray<amrex::Real, NUM_SPECIES> zrot = {0.0};
+  amrex::GpuArray<amrex::Real, NUM_SPECIES * NUM_FIT> fitmu = {0.0};
+  amrex::GpuArray<amrex::Real, NUM_SPECIES * NUM_FIT> fitlam = {0.0};
+  amrex::GpuArray<amrex::Real, NUM_SPECIES * NUM_SPECIES * NUM_FIT> fitdbin = {
+    0.0};
+  bool use_soret = false;
+  int numLite = 3;
+  amrex::GpuArray<int, 3> liteSpec = {0};
+  amrex::GpuArray<amrex::Real, NUM_SPECIES * NUM_FIT * 3> fittdrat = {0.0};
+  amrex::GpuArray<int, NUM_SPECIES> nlin = {0};
+  // Added settings for the mixture model
+  bool use_wilke_mixture = false;
+  bool use_mathur_mixture = false;
+
+  bool use_sutherland_viscosity = false;
+  amrex::Real viscosity_mu_ref{17.16};
+  amrex::Real viscosity_T_ref{273.15};
+  amrex::Real viscosity_power{1.5};
+  amrex::Real viscosity_S{110.4};
+};
+
+template <>
+struct TransParm<eos::SRK, SimpleTransport>
+{
+  amrex::GpuArray<amrex::Real, NUM_SPECIES> wt = {0.0};
+  amrex::GpuArray<amrex::Real, NUM_SPECIES> iwt = {0.0};
+  amrex::GpuArray<amrex::Real, NUM_SPECIES> eps = {0.0};
+  amrex::GpuArray<amrex::Real, NUM_SPECIES> sig = {0.0};
+  amrex::GpuArray<amrex::Real, NUM_SPECIES> dip = {0.0};
+  amrex::GpuArray<amrex::Real, NUM_SPECIES> pol = {0.0};
+  amrex::GpuArray<amrex::Real, NUM_SPECIES> zrot = {0.0};
+
+  amrex::GpuArray<amrex::Real, NUM_SPECIES * NUM_FIT> fitmu = {0.0};
+  amrex::GpuArray<amrex::Real, NUM_SPECIES * NUM_FIT> fitlam = {0.0};
+  amrex::GpuArray<amrex::Real, NUM_SPECIES * NUM_SPECIES * NUM_FIT> fitdbin = {
+    0.0};
+  bool use_soret = false;
+  int numLite = 10;
+  amrex::GpuArray<int, 10> liteSpec = {0};
+  amrex::GpuArray<amrex::Real, NUM_SPECIES * NUM_FIT * 10> fittdrat = {0.0};
+  amrex::GpuArray<int, NUM_SPECIES> nlin = {0};
+  amrex::GpuArray<amrex::Real, 10 * 4> Afac = {0.0};
+  amrex::GpuArray<amrex::Real, 7 * 4> Bfac = {0.0};
+  amrex::GpuArray<amrex::Real, NUM_SPECIES * NUM_SPECIES> sqrtT2ij = {0.0};
+  amrex::GpuArray<amrex::Real, NUM_SPECIES * NUM_SPECIES> sqrtEpsilonij = {0.0};
+  amrex::GpuArray<amrex::Real, NUM_SPECIES * NUM_SPECIES> sqrtMWij = {0.0};
+  amrex::GpuArray<amrex::Real, NUM_SPECIES * NUM_SPECIES> sqrtKappaij = {0.0};
+  amrex::GpuArray<amrex::Real, NUM_SPECIES * NUM_SPECIES * NUM_SPECIES>
+    Upsilonijk = {0.0};
+  amrex::GpuArray<amrex::Real, NUM_SPECIES> Kappai = {0.0};
+  amrex::GpuArray<amrex::Real, NUM_SPECIES> omega = {0.0};
+};
+
+} // namespace transport
+
+template <typename EOSType>
+struct InitParm<transport::TransParm<EOSType, transport::ConstTransport>>
+{
+  static void host_initialize(
+    PeleParams<transport::TransParm<EOSType, transport::ConstTransport>>*
+      parm_in)
   {
+    transport::TransParm<EOSType, transport::ConstTransport>* tparm =
+      &(parm_in->m_h_parm);
     amrex::ParmParse pp("transport");
     pp.query("const_viscosity", tparm->const_viscosity);
     pp.query("const_bulk_viscosity", tparm->const_bulk_viscosity);
@@ -63,27 +148,24 @@ struct InitTransParm<EOSType, ConstTransport>
         ". Use CGS (def) or MKS");
     }
   }
-};
 
-template <typename EOSType>
-struct TransParm<EOSType, SutherlandTransport>
-{
-  amrex::Real Prandtl_number{0.7};
-  amrex::Real viscosity_mu_ref{17.16};
-  amrex::Real viscosity_T_ref{273.15};
-  amrex::Real viscosity_power{1.5};
-  amrex::Real viscosity_S{110.4};
-  amrex::Real const_bulk_viscosity{0.0};
-  amrex::Real const_diffusivity{1.0};
-
-  bool use_soret = false;
-};
-
-template <typename EOSType>
-struct InitTransParm<EOSType, SutherlandTransport>
-{
-  void operator()(TransParm<EOSType, SutherlandTransport>* tparm)
+  static void host_deallocate(
+    PeleParams<transport::TransParm<EOSType, transport::ConstTransport>>*
+    /*parm_in*/)
   {
+  }
+};
+
+template <typename EOSType>
+struct InitParm<transport::TransParm<EOSType, transport::SutherlandTransport>>
+{
+
+  static void host_initialize(
+    PeleParams<transport::TransParm<EOSType, transport::SutherlandTransport>>*
+      parm_in)
+  {
+    transport::TransParm<EOSType, transport::SutherlandTransport>* tparm =
+      &(parm_in->m_h_parm);
     amrex::ParmParse pp("transport");
     pp.query("Prandtl_number", tparm->Prandtl_number);
     pp.query("viscosity_mu_ref", tparm->viscosity_mu_ref);
@@ -93,44 +175,77 @@ struct InitTransParm<EOSType, SutherlandTransport>
     pp.query("const_bulk_viscosity", tparm->const_bulk_viscosity);
     pp.query("const_diffusivity", tparm->const_diffusivity);
   }
-};
 
-template <typename EOSType>
-struct TransParm<EOSType, SimpleTransport>
-{
-  amrex::GpuArray<amrex::Real, NUM_SPECIES> wt = {0.0};
-  amrex::GpuArray<amrex::Real, NUM_SPECIES> iwt = {0.0};
-  amrex::GpuArray<amrex::Real, NUM_SPECIES> eps = {0.0};
-  amrex::GpuArray<amrex::Real, NUM_SPECIES> sig = {0.0};
-  amrex::GpuArray<amrex::Real, NUM_SPECIES> dip = {0.0};
-  amrex::GpuArray<amrex::Real, NUM_SPECIES> pol = {0.0};
-  amrex::GpuArray<amrex::Real, NUM_SPECIES> zrot = {0.0};
-  amrex::GpuArray<amrex::Real, NUM_SPECIES* NUM_FIT> fitmu = {0.0};
-  amrex::GpuArray<amrex::Real, NUM_SPECIES* NUM_FIT> fitlam = {0.0};
-  amrex::GpuArray<amrex::Real, NUM_SPECIES* NUM_SPECIES* NUM_FIT> fitdbin = {
-    0.0};
-  bool use_soret = false;
-  int numLite = 3;
-  amrex::GpuArray<int, 3> liteSpec = {0};
-  amrex::GpuArray<amrex::Real, NUM_SPECIES* NUM_FIT* 3> fittdrat = {0.0};
-  amrex::GpuArray<int, NUM_SPECIES> nlin = {0};
-
-  // Added settings for the mixture model
-  bool use_wilke_mixture = false;
-  bool use_mathur_mixture = false;
-
-  bool use_sutherland_viscosity = false;
-  amrex::Real viscosity_mu_ref{17.16};
-  amrex::Real viscosity_T_ref{273.15};
-  amrex::Real viscosity_power{1.5};
-  amrex::Real viscosity_S{110.4};
-};
-
-template <typename EOSType>
-struct InitTransParm<EOSType, SimpleTransport>
-{
-  void operator()(TransParm<EOSType, SimpleTransport>* tparm)
+  static void host_deallocate(
+    PeleParams<transport::TransParm<EOSType, transport::SutherlandTransport>>*
+    /*parm_in*/)
   {
+  }
+};
+
+template <typename EOSType>
+struct HostOnlyParm<transport::TransParm<EOSType, transport::ManifoldTransport>>
+{
+  std::shared_ptr<PeleParamsGeneric<BlackBoxFunctionData>> manfunc_par;
+  bool use_eos_manifold = true;
+};
+
+template <typename EOSType>
+struct InitParm<transport::TransParm<EOSType, transport::ManifoldTransport>>
+{
+  static void host_initialize(
+    PeleParams<transport::TransParm<EOSType, transport::ManifoldTransport>>*
+      parm_in)
+  {
+    amrex::ParmParse pp("manifold_transport");
+    pp.query("use_eos_manifold", parm_in->m_host_only_parm.use_eos_manifold);
+
+    if (
+      parm_in->m_host_only_parm.manfunc_par == nullptr &&
+      parm_in->m_host_only_parm.use_eos_manifold) {
+      amrex::Abort(
+        "For manifold transport tabulated or neural network data must "
+        "be provided to transport parameters by setting the host_only_parm"
+        "unless you set manifold_transport.use_eos_manifold = false");
+    } else if (!parm_in->m_host_only_parm.use_eos_manifold) {
+      std::string manifold_model;
+      pp.get("model", manifold_model);
+      parm_in->m_host_only_parm.manfunc_par =
+        PeleParamsGeneric<BlackBoxFunctionData>::create(manifold_model);
+      parm_in->m_host_only_parm.manfunc_par->host_only_parm()
+        .parm_parse_prefix = "manifold_transport";
+      parm_in->m_host_only_parm.manfunc_par->initialize();
+    }
+
+    transport::TransParm<EOSType, transport::ManifoldTransport>* tparm =
+      &(parm_in->m_h_parm);
+    tparm->manf_data = parm_in->m_host_only_parm.manfunc_par->device_parm();
+    tparm->idx_rhoD = get_var_index(
+      "DIFF", &parm_in->m_host_only_parm.manfunc_par->host_parm());
+    tparm->idx_mu = get_var_index(
+      "VISC", &parm_in->m_host_only_parm.manfunc_par->host_parm());
+  }
+
+  static void host_deallocate(
+    PeleParams<transport::TransParm<EOSType, transport::ManifoldTransport>>*
+      parm_in)
+  {
+    if (!parm_in->m_host_only_parm.use_eos_manifold) {
+      parm_in->m_host_only_parm.manfunc_par->deallocate();
+    }
+    parm_in->m_host_only_parm.manfunc_par = nullptr;
+  }
+};
+
+template <typename EOSType>
+struct InitParm<transport::TransParm<EOSType, transport::SimpleTransport>>
+{
+  static void host_initialize(
+    PeleParams<transport::TransParm<EOSType, transport::SimpleTransport>>*
+      parm_in)
+  {
+    transport::TransParm<EOSType, transport::SimpleTransport>* tparm =
+      &(parm_in->m_h_parm);
     egtransetWT(tparm->wt.data());
     egtransetEPS(tparm->eps.data());
     egtransetSIG(tparm->sig.data());
@@ -143,7 +258,7 @@ struct InitTransParm<EOSType, SimpleTransport>
     egtransetCOFD(tparm->fitdbin.data());
     amrex::ParmParse pp("transport");
     pp.query("use_soret", tparm->use_soret);
-
+    
     pp.query("use_wilke_mixture", tparm->use_wilke_mixture);
     pp.query("use_mathur_mixture", tparm->use_mathur_mixture);
 
@@ -152,7 +267,7 @@ struct InitTransParm<EOSType, SimpleTransport>
     pp.query("viscosity_T_ref", tparm->viscosity_T_ref);
     pp.query("viscosity_power", tparm->viscosity_power);
     pp.query("viscosity_S", tparm->viscosity_S);
-
+    
     if (tparm->use_soret) {
       egtransetNLITE(&tparm->numLite);
       egtransetKTDIF(tparm->liteSpec.data());
@@ -162,45 +277,23 @@ struct InitTransParm<EOSType, SimpleTransport>
       tparm->iwt[i] = 1. / tparm->wt[i];
     }
   }
-};
 
-template <>
-struct TransParm<eos::SRK, SimpleTransport>
-{
-  amrex::GpuArray<amrex::Real, NUM_SPECIES> wt = {0.0};
-  amrex::GpuArray<amrex::Real, NUM_SPECIES> iwt = {0.0};
-  amrex::GpuArray<amrex::Real, NUM_SPECIES> eps = {0.0};
-  amrex::GpuArray<amrex::Real, NUM_SPECIES> sig = {0.0};
-  amrex::GpuArray<amrex::Real, NUM_SPECIES> dip = {0.0};
-  amrex::GpuArray<amrex::Real, NUM_SPECIES> pol = {0.0};
-  amrex::GpuArray<amrex::Real, NUM_SPECIES> zrot = {0.0};
-
-  amrex::GpuArray<amrex::Real, NUM_SPECIES* NUM_FIT> fitmu = {0.0};
-  amrex::GpuArray<amrex::Real, NUM_SPECIES* NUM_FIT> fitlam = {0.0};
-  amrex::GpuArray<amrex::Real, NUM_SPECIES* NUM_SPECIES* NUM_FIT> fitdbin = {
-    0.0};
-  bool use_soret = false;
-  int numLite = 10;
-  amrex::GpuArray<int, 10> liteSpec = {0};
-  amrex::GpuArray<amrex::Real, NUM_SPECIES* NUM_FIT* 10> fittdrat = {0.0};
-  amrex::GpuArray<int, NUM_SPECIES> nlin = {0};
-  amrex::GpuArray<amrex::Real, 10 * 4> Afac = {0.0};
-  amrex::GpuArray<amrex::Real, 7 * 4> Bfac = {0.0};
-  amrex::GpuArray<amrex::Real, NUM_SPECIES* NUM_SPECIES> sqrtT2ij = {0.0};
-  amrex::GpuArray<amrex::Real, NUM_SPECIES* NUM_SPECIES> sqrtEpsilonij = {0.0};
-  amrex::GpuArray<amrex::Real, NUM_SPECIES* NUM_SPECIES> sqrtMWij = {0.0};
-  amrex::GpuArray<amrex::Real, NUM_SPECIES* NUM_SPECIES> sqrtKappaij = {0.0};
-  amrex::GpuArray<amrex::Real, NUM_SPECIES* NUM_SPECIES* NUM_SPECIES>
-    Upsilonijk = {0.0};
-  amrex::GpuArray<amrex::Real, NUM_SPECIES> Kappai = {0.0};
-  amrex::GpuArray<amrex::Real, NUM_SPECIES> omega = {0.0};
-};
-
-template <>
-struct InitTransParm<eos::SRK, SimpleTransport>
-{
-  void operator()(TransParm<eos::SRK, SimpleTransport>* tparm)
+  static void host_deallocate(
+    PeleParams<transport::TransParm<EOSType, transport::SimpleTransport>>*
+    /*parm_in*/)
   {
+  }
+};
+
+template <>
+struct InitParm<transport::TransParm<eos::SRK, transport::SimpleTransport>>
+{
+  static void host_initialize(
+    PeleParams<transport::TransParm<eos::SRK, transport::SimpleTransport>>*
+      parm_in)
+  {
+    transport::TransParm<eos::SRK, transport::SimpleTransport>* tparm =
+      &(parm_in->m_h_parm);
     egtransetWT(tparm->wt.data());
     egtransetEPS(tparm->eps.data());
     egtransetSIG(tparm->sig.data());
@@ -358,59 +451,13 @@ struct InitTransParm<eos::SRK, SimpleTransport>
       }
     }
   }
+
+  static void host_deallocate(
+    PeleParams<transport::TransParm<eos::SRK, transport::SimpleTransport>>*
+    /*parm_in*/)
+  {
+  }
 };
 
-template <typename TransportType>
-class TransportParams
-{
-public:
-  TransportParams() = default;
-
-  ~TransportParams() = default;
-
-  void allocate()
-  {
-    InitTransParm<EosType, TransportType>()(&m_h_trans_parm);
-    if (!m_device_allocated) {
-      m_d_trans_parm =
-        (TransParm<EosType, TransportType>*)amrex::The_Device_Arena()->alloc(
-          sizeof(m_h_trans_parm));
-      m_device_allocated = true;
-      sync_to_device();
-    }
-  }
-
-  void deallocate()
-  {
-    if (m_device_allocated) {
-      amrex::The_Device_Arena()->free(m_d_trans_parm);
-    }
-  }
-
-  void sync_to_device()
-  {
-    if (!m_device_allocated) {
-      amrex::Abort("Device params not allocated yet");
-    } else {
-      amrex::Gpu::copy(
-        amrex::Gpu::hostToDevice, &m_h_trans_parm, &m_h_trans_parm + 1,
-        m_d_trans_parm);
-    }
-  }
-
-  TransParm<EosType, TransportType>& host_trans_parm()
-  {
-    return m_h_trans_parm;
-  }
-  const TransParm<EosType, TransportType>* device_trans_parm()
-  {
-    return m_d_trans_parm;
-  }
-
-private:
-  TransParm<EosType, TransportType> m_h_trans_parm;
-  TransParm<EosType, TransportType>* m_d_trans_parm{nullptr};
-  bool m_device_allocated{false};
-};
-} // namespace pele::physics::transport
+} // namespace pele::physics
 #endif
