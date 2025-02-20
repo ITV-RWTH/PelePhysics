@@ -316,20 +316,47 @@ struct SimpleTransport
       Xloc[i] = Yloc[i] * wbar * tparm->iwt[i];
     }
     if (wtr_get_mu) {
-      for (int i = 0; i < NUM_SPECIES; ++i) {
-        muloc[i] = tparm->fitmu[4 * i] + tparm->fitmu[1 + 4 * i] * logT[0] +
-                   tparm->fitmu[2 + 4 * i] * logT[1] +
-                   tparm->fitmu[3 + 4 * i] * logT[2];
-        muloc[i] = std::exp(muloc[i]);
-      }
-
+      
       mu = 0.0;
+      if(tparm->use_sutherland_viscosity) {
+        // Use Sutherland Model for viscosity
+        mu = tparm->viscosity_mu_ref *
+           std::pow((Tloc / tparm->viscosity_T_ref), tparm->viscosity_power) *
+           (tparm->viscosity_T_ref + tparm->viscosity_S) /
+           (Tloc + tparm->viscosity_S);
 
-      for (int i = 0; i < NUM_SPECIES; ++i) {
-        mu += Xloc[i] *
-              (muloc[i] * muloc[i] * muloc[i] * muloc[i] * muloc[i] * muloc[i]);
-      }
-      mu = std::cbrt(std::sqrt(mu));
+      } else 
+        // Default mixture averaging path
+        for (int i = 0; i < NUM_SPECIES; ++i) {
+          muloc[i] = tparm->fitmu[4 * i] + tparm->fitmu[1 + 4 * i] * logT[0] +
+                    tparm->fitmu[2 + 4 * i] * logT[1] +
+                    tparm->fitmu[3 + 4 * i] * logT[2];
+          muloc[i] = std::exp(muloc[i]);
+        }
+
+
+        // Mixture model for the viscosity
+        if (tparm->use_wilke_mixture) {
+          // Using Wilke Mixture Model
+          for (int i = 0; i < NUM_SPECIES; ++i) {
+            amrex::Real Wilke_sum = 0.0;
+            for (int j = 0; j < NUM_SPECIES; ++j) {
+              amrex::Real Mi_Mj = tparm->iwt[j] / tparm->iwt[i];
+              amrex::Real phi_wilke = 1. / std::sqrt(8.) * std::pow(1. + std::sqrt(muloc[i] / muloc[j]) * std::sqrt(std::sqrt(1. / Mi_Mj)), 2) / std::sqrt(1. + Mi_Mj);
+              Wilke_sum += Yloc[j] * phi_wilke * Mi_Mj;
+            }
+            mu += (Yloc[i] * muloc[i] / Wilke_sum);
+          }
+        } else {
+          // Default Pele Mixture Model (Ern)
+          for (int i = 0; i < NUM_SPECIES; ++i) {
+            mu += Xloc[i] *
+                  (muloc[i] * muloc[i] * muloc[i] * muloc[i] * muloc[i] * muloc[i]);
+          }
+          mu = std::cbrt(std::sqrt(mu));
+        }
+
+    }
 
       //  assumption that we only get bulk viscosity if we are already getting
       //  shear viscosity
@@ -354,11 +381,30 @@ struct SimpleTransport
         lamloc[i] = std::exp(lamloc[i]);
       }
 
+
+      // Lambda Mixture Model
       lam = 0.0;
-      for (int i = 0; i < NUM_SPECIES; ++i) {
-        lam += Xloc[i] * std::sqrt(std::sqrt(lamloc[i]));
+      if (tparm->use_mathur_mixture) {
+        // Mathur/CIAO Mixture Model
+        amrex::Real first_sum = 0;
+        amrex::Real second_sum = 0;
+        for (int i = 0; i < NUM_SPECIES; ++i) {
+          first_sum += Xloc[i] * lamloc[i];
+          second_sum += Xloc[i] / lamloc[i];
+        }
+        lam = 0.5 * (first_sum + 1. / second_sum);
+
+      } else {
+        // Default Pele Mixture Model
+        for (int i = 0; i < NUM_SPECIES; ++i) {
+          lam += Xloc[i] * std::sqrt(std::sqrt(lamloc[i]));
+        }
+        lam = lam * lam * lam * lam;
       }
-      lam = lam * lam * lam * lam;
+
+
+
+
     }
     // Add nonideal corrections if necessary
     NonIdealChungCorrections<EosType>()(
