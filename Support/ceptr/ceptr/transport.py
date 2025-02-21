@@ -9,7 +9,7 @@ import ceptr.thermo as cth
 import ceptr.writer as cw
 
 
-def transport(fstream, mechanism, species_info):
+def transport(fstream, mechanism, species_info, use_eucken=False):
     """Write the transport functions."""
     cw.writer(fstream, cw.comment("Transport function declarations "))
     n_species = species_info.n_species
@@ -30,7 +30,7 @@ def transport(fstream, mechanism, species_info):
     zrot(fstream, mechanism, species_info, species_transport)
     nlin(fstream, mechanism, species_info, species_transport)
 
-    viscosity(fstream, mechanism, species_info, species_transport, ntfit=50)
+    viscosity(fstream, mechanism, species_info, species_transport, ntfit=50, use_eucken=use_eucken)
     diffcoefs(fstream, species_info, species_transport, ntfit=50)
     light_specs(fstream, idx_light_specs)
     thermaldiffratios(
@@ -219,7 +219,7 @@ def sig(fstream, mechanism, species_info, species_transport):
     """Write the the lennard-jones collision diameter function."""
     cw.writer(fstream)
     cw.writer(
-        fstream,
+            fstream,
         cw.comment("the lennard-jones collision diameter in Angstroms"),
     )
     generate_trans_routine_simple(
@@ -318,7 +318,7 @@ def nlin(fstream, mechanism, species_info, species_transport):
     cw.writer(fstream, "}")
 
 
-def viscosity(fstream, mechanism, species_info, species_transport, ntfit):
+def viscosity(fstream, mechanism, species_info, species_transport, ntfit, use_eucken):
     """Write the viscosity function."""
     n_species = species_info.n_species
     # compute single constants in g/cm/s
@@ -426,14 +426,16 @@ def viscosity(fstream, mechanism, species_info, species_transport, ntfit):
 
                 # ------------------------------------------------------------------------------------------------------------
                 # The Eucken vs Warnatz formulation for thermal conductivity can be set here. The default is the Warnatz formualtion. Change the bool below to change the setting.
-                use_eucken = False
+                # use_eucken = False1
 
                 if not use_eucken:
                     # Warnatz formualtion
                     cond = ((visc * ru / spec.weight)) * ( f_trans * cv_trans_r + f_rot * cv_rot_r + f_vib * cv_vib_r )
+                    print("Using Warnatz...")
                 else:
                     # Eucken formualtion
                     cond = visc * (cth.eval_cv_species(mechanism, spec, t) * ru + 9./4. * ru) / spec.weight
+                    print("Using Eucken...")
                 # ------------------------------------------------------------------------------------------------------------
 
 

@@ -35,6 +35,7 @@ class Converter:
         qss_format_input=None,
         qss_symbolic_jacobian=False,
         plog_pressure=None,
+        use_eucken=False,
     ):
         self.mechIsAHetMech = chemistry == "heterogeneous"
 
@@ -137,6 +138,8 @@ class Converter:
             self.mechanism,
             qss_format_input,
         )
+
+        self.use_eucken = use_eucken
 
     def set_species(self):
         """Set the species."""
@@ -535,7 +538,7 @@ class Converter:
 
             # Transport
             cw.writer(hdr)
-            ctr.transport(hdr, self.mechanism, self.species_info)
+            ctr.transport(hdr, self.mechanism, self.species_info, self.use_eucken)
             ctr.critical_parameters(hdr, self.mechanism, self.species_info)
             # GS routines
             cgjs.emptygjs(hdr)

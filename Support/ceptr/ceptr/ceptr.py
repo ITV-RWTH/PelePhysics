@@ -51,6 +51,7 @@ def convert(
     gas_name,
     interface_name,
     plog_pressure,
+    use_eucken,
 ):
     """Convert a mechanism file."""
     print(f"""Converting file {fname}""")
@@ -75,6 +76,7 @@ def convert(
         qss_format_input,
         qss_symbolic_jac,
         plog_pressure,
+        use_eucken,
     )
     conv.writer()
     conv.formatter()
@@ -207,6 +209,14 @@ def main():
         default=None,
     )
 
+    parser.add_argument(
+        "-ek",
+        "--use_eucken",
+        help="Switch to Eucken Formulation for heat conductivity",
+        type=bool,
+        default=False,
+    )
+
     args = parser.parse_args()
 
     if args.chemistry == "heterogeneous":
@@ -224,6 +234,7 @@ def main():
             args.gas_name,
             args.interface_name,
             args.plog_pressure,
+            args.use_eucken,
         )
     elif args.lst:
         convert_lst(
