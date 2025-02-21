@@ -316,7 +316,6 @@ struct SimpleTransport
       Xloc[i] = Yloc[i] * wbar * tparm->iwt[i];
     }
     if (wtr_get_mu) {
-      
       mu = 0.0;
       if(tparm->use_sutherland_viscosity) {
         // Use Sutherland Model for viscosity
@@ -325,7 +324,7 @@ struct SimpleTransport
            (tparm->viscosity_T_ref + tparm->viscosity_S) /
            (Tloc + tparm->viscosity_S);
 
-      } else 
+      } else {
         // Default mixture averaging path
         for (int i = 0; i < NUM_SPECIES; ++i) {
           muloc[i] = tparm->fitmu[4 * i] + tparm->fitmu[1 + 4 * i] * logT[0] +
@@ -355,8 +354,7 @@ struct SimpleTransport
           }
           mu = std::cbrt(std::sqrt(mu));
         }
-
-    }
+      }
 
       //  assumption that we only get bulk viscosity if we are already getting
       //  shear viscosity
@@ -380,8 +378,6 @@ struct SimpleTransport
                     tparm->fitlam[3 + 4 * i] * logT[2];
         lamloc[i] = std::exp(lamloc[i]);
       }
-
-
       // Lambda Mixture Model
       lam = 0.0;
       if (tparm->use_mathur_mixture) {
@@ -401,9 +397,6 @@ struct SimpleTransport
         }
         lam = lam * lam * lam * lam;
       }
-
-
-
 
     }
     // Add nonideal corrections if necessary
