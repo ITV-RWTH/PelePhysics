@@ -65,7 +65,7 @@ struct TransParm<EOSType, SimpleTransport>
   amrex::GpuArray<amrex::Real, NUM_SPECIES * NUM_SPECIES * NUM_FIT> fitdbin = {
     0.0};
   bool use_soret = false;
-  int numLite = 3;
+  int numLite = 3; //justin anschauen
   amrex::GpuArray<int, 3> liteSpec = {0};
   amrex::GpuArray<amrex::Real, NUM_SPECIES * NUM_FIT * 3> fittdrat = {0.0};
   amrex::GpuArray<int, NUM_SPECIES> nlin = {0};
@@ -248,7 +248,7 @@ struct InitParm<transport::TransParm<EOSType, transport::SimpleTransport>>
     amrex::ParmParse pp("transport");
     pp.query("use_soret", tparm->use_soret);
     if (tparm->use_soret) {
-      egtransetNLITE(&tparm->numLite);
+      // egtransetNLITE(&tparm->numLite);
       egtransetKTDIF(tparm->liteSpec.data());
       egtransetCOFTD(tparm->fittdrat.data());
     }
@@ -283,7 +283,7 @@ struct InitParm<transport::TransParm<eos::SRK, transport::SimpleTransport>>
     egtransetCOFETA(tparm->fitmu.data());
     egtransetCOFLAM(tparm->fitlam.data());
     egtransetCOFD(tparm->fitdbin.data());
-    egtransetNLITE(&tparm->numLite);
+    //egtransetNLITE(&tparm->numLite);
     egtransetKTDIF(tparm->liteSpec.data());
     egtransetCOFTD(tparm->fittdrat.data());
 

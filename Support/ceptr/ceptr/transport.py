@@ -8,19 +8,25 @@ import ceptr.constants as cc
 import ceptr.thermo as cth
 import ceptr.writer as cw
 
+def eval_lite_species(species_info):
+    n_lite = 0
+    idx_light_specs = []
+    n_species = species_info.n_species
+    for sp in range(n_species):
+        spec = species_info.nonqssa_species[sp]
+        if spec.weight < 0.5:
+            n_lite += 1
+            idx_light_specs.append(spec.idx)
+    return n_lite, idx_light_specs 
+
 
 def transport(fstream, mechanism, species_info):
     """Write the transport functions."""
     cw.writer(fstream, cw.comment("Transport function declarations "))
-    n_species = species_info.n_species
+    n_species = eval_lite_species(species_info)
     species_transport = analyze_transport(mechanism, species_info)
-    n_lite = 0
-    idx_light_specs = []
-    for sp in range(n_species):
-        spec = species_info.nonqssa_species[sp]
-        if spec.weight < 5.0:
-            n_lite += 1
-            idx_light_specs.append(spec.idx)
+    n_lite, idx_light_specs = eval_lite_species(species_info)
+
     misc_trans_info(fstream, kk=n_species, n_lite=n_lite)
     wt(fstream, species_info)
     eps(fstream, mechanism, species_info, species_transport)
@@ -130,17 +136,6 @@ def misc_trans_info(fstream, kk, n_lite, no=4):
 
     cw.writer(fstream)
     cw.writer(fstream)
-    generate_trans_routine_integer(
-        fstream,
-        [
-            "egtransetNLITE",
-            "EGTRANSETNLITE",
-            "egtransetnlite",
-            "egtransetnlite_",
-            "NLITE",
-        ],
-        n_lite,
-    )
 
     cw.writer(fstream)
     cw.writer(fstream)

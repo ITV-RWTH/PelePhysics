@@ -817,6 +817,10 @@ class Converter:
         cw.writer(
             fstream, "#define NUM_REACTIONS (NUM_GAS_REACTIONS + NUM_SURFACE_REACTIONS)"
         )
+        cw.writer(
+            fstream, f"#define NUM_LITE_SPECIES {ctr.eval_lite_species(self.species_info)[0]}"
+        )
+
         cw.writer(fstream)
         cw.writer(fstream, f"#define NUM_IONS {nb_ions}")
         cw.writer(fstream)

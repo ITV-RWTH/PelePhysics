@@ -369,7 +369,7 @@ struct SimpleTransport
     }
 
     if (wtr_get_chi) {
-      for (int n = 0; n < tparm->numLite; ++n) {
+      for (int n = 0; n < NUM_LITE_SPECIES; ++n) {
         const int i = tparm->liteSpec[n];
         for (int j = 0; j < NUM_SPECIES; ++j) {
           if (j != i) {
