@@ -23,7 +23,7 @@ def eval_lite_species(species_info):
 def transport(fstream, mechanism, species_info):
     """Write the transport functions."""
     cw.writer(fstream, cw.comment("Transport function declarations "))
-    n_species = eval_lite_species(species_info)
+    n_species = species_info.n_species
     species_transport = analyze_transport(mechanism, species_info)
     n_lite, idx_light_specs = eval_lite_species(species_info)
 
