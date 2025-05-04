@@ -14,7 +14,7 @@ def eval_lite_species(species_info):
     n_species = species_info.n_species
     for sp in range(n_species):
         spec = species_info.nonqssa_species[sp]
-        if spec.weight < 0.5:
+        if spec.weight < 5.0:
             n_lite += 1
             idx_light_specs.append(spec.idx)
     return n_lite, idx_light_specs 
