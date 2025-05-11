@@ -65,8 +65,8 @@ struct TransParm<EOSType, SimpleTransport>
   amrex::GpuArray<amrex::Real, NUM_SPECIES * NUM_SPECIES * NUM_FIT> fitdbin = {
     0.0};
   bool use_soret = false;
-  amrex::GpuArray<int, 3> liteSpec = {0};
-  amrex::GpuArray<amrex::Real, NUM_SPECIES * NUM_FIT * 3> fittdrat = {0.0};
+  amrex::GpuArray<int, NUM_LITE_SPECIES> liteSpec = {0};
+  amrex::GpuArray<amrex::Real, NUM_SPECIES * NUM_FIT * NUM_LITE_SPECIES> fittdrat = {0.0};
   amrex::GpuArray<int, NUM_SPECIES> nlin = {0};
 };
 
@@ -86,8 +86,8 @@ struct TransParm<eos::SRK, SimpleTransport>
   amrex::GpuArray<amrex::Real, NUM_SPECIES * NUM_SPECIES * NUM_FIT> fitdbin = {
     0.0};
   bool use_soret = false;
-  amrex::GpuArray<int, 10> liteSpec = {0};
-  amrex::GpuArray<amrex::Real, NUM_SPECIES * NUM_FIT * 10> fittdrat = {0.0};
+  amrex::GpuArray<int, NUM_LITE_SPECIES> liteSpec = {0};
+  amrex::GpuArray<amrex::Real, NUM_SPECIES * NUM_FIT * NUM_LITE_SPECIES> fittdrat = {0.0};
   amrex::GpuArray<int, NUM_SPECIES> nlin = {0};
   amrex::GpuArray<amrex::Real, 10 * 4> Afac = {0.0};
   amrex::GpuArray<amrex::Real, 7 * 4> Bfac = {0.0};
