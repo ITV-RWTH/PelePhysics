@@ -30,6 +30,7 @@
 #define NUM_ELEMENTS (NUM_GAS_ELEMENTS + NUM_SURFACE_ELEMENTS)
 #define NUM_SPECIES (NUM_GAS_SPECIES + NUM_SURFACE_SPECIES)
 #define NUM_REACTIONS (NUM_GAS_REACTIONS + NUM_SURFACE_REACTIONS)
+#define NUM_LITE_SPECIES 0
 
 #define NUM_IONS 0
 
@@ -165,8 +166,8 @@ AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE void
 cv_R(amrex::Real* species, const amrex::Real T)
 {
   const amrex::Real T2 = T * T;
-  const amrex::Real T3 = T * T * T;
-  const amrex::Real T4 = T * T * T * T;
+  const amrex::Real T3 = T * T2;
+  const amrex::Real T4 = T * T3;
 
   // species with midpoint at T=1000 kelvin
   if (T < 1000) {
@@ -208,8 +209,8 @@ AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE void
 cp_R(amrex::Real* species, const amrex::Real T)
 {
   const amrex::Real T2 = T * T;
-  const amrex::Real T3 = T * T * T;
-  const amrex::Real T4 = T * T * T * T;
+  const amrex::Real T3 = T * T2;
+  const amrex::Real T4 = T * T3;
 
   // species with midpoint at T=1000 kelvin
   if (T < 1000) {
@@ -251,8 +252,8 @@ AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE void
 gibbs(amrex::Real* species, const amrex::Real T)
 {
   const amrex::Real T2 = T * T;
-  const amrex::Real T3 = T * T * T;
-  const amrex::Real T4 = T * T * T * T;
+  const amrex::Real T3 = T * T2;
+  const amrex::Real T4 = T * T3;
   const amrex::Real invT = 1.0 / T;
   const amrex::Real logT = log(T);
 
@@ -312,8 +313,8 @@ AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE void
 helmholtz(amrex::Real* species, const amrex::Real T)
 {
   const amrex::Real T2 = T * T;
-  const amrex::Real T3 = T * T * T;
-  const amrex::Real T4 = T * T * T * T;
+  const amrex::Real T3 = T * T2;
+  const amrex::Real T4 = T * T3;
   const amrex::Real invT = 1.0 / T;
   const amrex::Real logT = log(T);
 
@@ -373,8 +374,8 @@ AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE void
 speciesInternalEnergy(amrex::Real* species, const amrex::Real T)
 {
   const amrex::Real T2 = T * T;
-  const amrex::Real T3 = T * T * T;
-  const amrex::Real T4 = T * T * T * T;
+  const amrex::Real T3 = T * T2;
+  const amrex::Real T4 = T * T3;
   const amrex::Real invT = 1.0 / T;
 
   // species with midpoint at T=1000 kelvin
@@ -425,8 +426,8 @@ AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE void
 speciesEnthalpy(amrex::Real* species, const amrex::Real T)
 {
   const amrex::Real T2 = T * T;
-  const amrex::Real T3 = T * T * T;
-  const amrex::Real T4 = T * T * T * T;
+  const amrex::Real T3 = T * T2;
+  const amrex::Real T4 = T * T3;
   const amrex::Real invT = 1.0 / T;
 
   // species with midpoint at T=1000 kelvin
@@ -477,8 +478,8 @@ AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE void
 speciesEntropy(amrex::Real* species, const amrex::Real T)
 {
   const amrex::Real T2 = T * T;
-  const amrex::Real T3 = T * T * T;
-  const amrex::Real T4 = T * T * T * T;
+  const amrex::Real T3 = T * T2;
+  const amrex::Real T4 = T * T3;
   const amrex::Real logT = log(T);
 
   // species with midpoint at T=1000 kelvin
@@ -529,7 +530,7 @@ AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE void
 dcvpRdT(amrex::Real* species, const amrex::Real T)
 {
   const amrex::Real T2 = T * T;
-  const amrex::Real T3 = T * T * T;
+  const amrex::Real T3 = T * T2;
 
   // species with midpoint at T=1000 kelvin
   if (T < 1000) {
@@ -590,8 +591,8 @@ CKCPBS(const amrex::Real T, const amrex::Real y[], amrex::Real& cpbs)
 
   // compute Cp/R at the given temperature
   const amrex::Real T2 = T * T;
-  const amrex::Real T3 = T * T * T;
-  const amrex::Real T4 = T * T * T * T;
+  const amrex::Real T3 = T * T2;
+  const amrex::Real T4 = T * T3;
 
   // species with midpoint at T=1000 kelvin
   if (T < 1000) {
@@ -669,8 +670,8 @@ CKCVBS(const amrex::Real T, const amrex::Real y[], amrex::Real& cvbs)
   amrex::Real result = 0.0;
   // compute Cv/R at the given temperature
   const amrex::Real T2 = T * T;
-  const amrex::Real T3 = T * T * T;
-  const amrex::Real T4 = T * T * T * T;
+  const amrex::Real T3 = T * T2;
+  const amrex::Real T4 = T * T3;
 
   // species with midpoint at T=1000 kelvin
   if (T < 1000) {
@@ -748,8 +749,8 @@ CKHBMS(const amrex::Real T, const amrex::Real y[], amrex::Real& hbms)
 {
   amrex::Real result = 0.0;
   const amrex::Real T2 = T * T;
-  const amrex::Real T3 = T * T * T;
-  const amrex::Real T4 = T * T * T * T;
+  const amrex::Real T3 = T * T2;
+  const amrex::Real T4 = T * T3;
   const amrex::Real invT = 1.0 / T;
 
   // species with midpoint at T=1000 kelvin
@@ -838,8 +839,8 @@ CKUBMS(const amrex::Real T, const amrex::Real y[], amrex::Real& ubms)
 {
   amrex::Real result = 0.0;
   const amrex::Real T2 = T * T;
-  const amrex::Real T3 = T * T * T;
-  const amrex::Real T4 = T * T * T * T;
+  const amrex::Real T3 = T * T2;
+  const amrex::Real T4 = T * T3;
   const amrex::Real invT = 1.0 / T;
 
   // species with midpoint at T=1000 kelvin
@@ -1825,12 +1826,6 @@ AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE void
 egtransetKK(int* KK)
 {
   *KK = 4;
-}
-
-AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE void
-egtransetNLITE(int* NLITE)
-{
-  *NLITE = 0;
 }
 
 // Patm in ergs/cm3
