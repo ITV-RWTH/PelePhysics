@@ -1,24 +1,36 @@
 """Transport routines."""
 
 from collections import OrderedDict
-
 import numpy as np
 
 import ceptr.constants as cc
 import ceptr.thermo as cth
 import ceptr.writer as cw
+import ceptr.formatter as cf
 
-def eval_lite_species(species_info):
+def eval_lite_species(species_info, need_H_spec = False):
     n_lite = 0
     idx_light_specs = []
+    H_lite_idx, H2_lite_idx = 0, 0
     n_species = species_info.n_species
     for sp in range(n_species):
         spec = species_info.nonqssa_species[sp]
         if spec.weight < 5.0:
             n_lite += 1
             idx_light_specs.append(spec.idx)
-    return n_lite, idx_light_specs 
-
+    if need_H_spec == True:
+        for sp in range(n_lite):
+            spec_idx = idx_light_specs[sp]
+            species_name = species_info.nonqssa_species_list[spec_idx]
+            s = cf.format_species(species_name)
+            if s == "H":
+                H_lite_idx = sp
+            elif s == "H2":
+                H2_lite_idx = sp
+    if need_H_spec == True:
+      return H_lite_idx, H2_lite_idx
+    else:
+      return n_lite, idx_light_specs
 
 def transport(fstream, mechanism, species_info):
     """Write the transport functions."""

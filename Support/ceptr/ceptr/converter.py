@@ -6,6 +6,7 @@ import shutil
 import subprocess as spr
 
 import numpy as np
+from pandas import set_eng_float_format
 
 import ceptr.ck as cck
 import ceptr.constants as cc
@@ -759,6 +760,7 @@ class Converter:
             cw.writer(
                 fstream,
                 f"#define {s}_ID {self.species_info.ordered_idx_map[species]}",
+
             )
             if s[-1] == "n" or s[-1] == "p" or s == "E":
                 nb_ions += 1
@@ -820,6 +822,9 @@ class Converter:
         cw.writer(
             fstream, f"#define NUM_LITE_SPECIES {ctr.eval_lite_species(self.species_info)[0]}"
         )
+        H_lite_idx, H2_lite_idx = ctr.eval_lite_species(self.species_info, True)
+        cw.writer(fstream, f"#define H_lite_idx {H_lite_idx}")
+        cw.writer(fstream, f"#define H2_lite_idx {H2_lite_idx}")
 
         cw.writer(fstream)
         cw.writer(fstream, f"#define NUM_IONS {nb_ions}")
