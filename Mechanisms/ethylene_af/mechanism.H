@@ -56,8 +56,8 @@
 #define NUM_SPECIES (NUM_GAS_SPECIES + NUM_SURFACE_SPECIES)
 #define NUM_REACTIONS (NUM_GAS_REACTIONS + NUM_SURFACE_REACTIONS)
 #define NUM_LITE_SPECIES 2
-#define H_lite_idx 0
-#define H2_lite_idx 1
+#define H_LITE_IDX 0
+#define H2_LITE_IDX 1
 
 #define NUM_IONS 0
 
