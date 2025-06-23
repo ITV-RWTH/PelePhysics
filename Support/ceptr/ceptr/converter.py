@@ -823,8 +823,8 @@ class Converter:
             fstream, f"#define NUM_LITE_SPECIES {ctr.eval_lite_species(self.species_info)[0]}"
         )
         H_lite_idx, H2_lite_idx = ctr.eval_lite_species(self.species_info, True)
-        cw.writer(fstream, f"#define H_lite_idx {H_lite_idx}")
-        cw.writer(fstream, f"#define H2_lite_idx {H2_lite_idx}")
+        cw.writer(fstream, f"#define H_LITE_IDX {H_lite_idx}")
+        cw.writer(fstream, f"#define H2_LITE_IDX {H2_lite_idx}")
 
         cw.writer(fstream)
         cw.writer(fstream, f"#define NUM_IONS {nb_ions}")
