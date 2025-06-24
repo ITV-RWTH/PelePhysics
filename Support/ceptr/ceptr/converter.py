@@ -1,5 +1,6 @@
 """Generate C++ files for a mechanism."""
 
+from asyncio import set_event_loop
 import os
 import pathlib
 import shutil
@@ -819,12 +820,12 @@ class Converter:
         cw.writer(
             fstream, "#define NUM_REACTIONS (NUM_GAS_REACTIONS + NUM_SURFACE_REACTIONS)"
         )
+        n_lite, __, spec_dict = ctr.eval_lite_species(self.species_info)
         cw.writer(
-            fstream, f"#define NUM_LITE_SPECIES {ctr.eval_lite_species(self.species_info)[0]}"
+            fstream, f"#define NUM_LITE_SPECIES {n_lite}"
         )
-        H_lite_idx, H2_lite_idx = ctr.eval_lite_species(self.species_info, True)
-        cw.writer(fstream, f"#define H_LITE_IDX {H_lite_idx}")
-        cw.writer(fstream, f"#define H2_LITE_IDX {H2_lite_idx}")
+        for species, lite_idx in spec_dict.items():
+            cw.writer(fstream, f"#define {species}_LITE_IDX {lite_idx}")
 
         cw.writer(fstream)
         cw.writer(fstream, f"#define NUM_IONS {nb_ions}")

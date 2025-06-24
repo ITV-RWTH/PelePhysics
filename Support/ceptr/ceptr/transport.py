@@ -8,36 +8,30 @@ import ceptr.thermo as cth
 import ceptr.writer as cw
 import ceptr.formatter as cf
 
-def eval_lite_species(species_info, need_H_spec = False):
+def eval_lite_species(species_info):
+    # total number of light species
     n_lite = 0
+    # indizes of the lite_spec position within the species list 
     idx_light_specs = []
-    H_lite_idx, H2_lite_idx = 0, 0
+    # dict of the species name and the lite_index
+    spec_dict = {}
     n_species = species_info.n_species
     for sp in range(n_species):
         spec = species_info.nonqssa_species[sp]
         if spec.weight < 5.0:
+            species_name = species_info.nonqssa_species_list[sp]
+            s = cf.format_species(species_name)
             n_lite += 1
             idx_light_specs.append(spec.idx)
-    if need_H_spec == True:
-        for sp in range(n_lite):
-            spec_idx = idx_light_specs[sp]
-            species_name = species_info.nonqssa_species_list[spec_idx]
-            s = cf.format_species(species_name)
-            if s == "H":
-                H_lite_idx = sp
-            elif s == "H2":
-                H2_lite_idx = sp
-    if need_H_spec == True:
-      return H_lite_idx, H2_lite_idx
-    else:
-      return n_lite, idx_light_specs
+            spec_dict[s] = sp
+    return n_lite, idx_light_specs, spec_dict
 
 def transport(fstream, mechanism, species_info):
     """Write the transport functions."""
     cw.writer(fstream, cw.comment("Transport function declarations "))
     n_species = species_info.n_species
     species_transport = analyze_transport(mechanism, species_info)
-    n_lite, idx_light_specs = eval_lite_species(species_info)
+    n_lite, idx_light_specs, __ = eval_lite_species(species_info)
 
     misc_trans_info(fstream, kk=n_species, n_lite=n_lite)
     wt(fstream, species_info)
