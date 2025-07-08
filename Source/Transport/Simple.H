@@ -369,6 +369,8 @@ struct SimpleTransport
     }
 
     if (wtr_get_chi) {
+      amrex::Real scaling_coeff[NUM_LITE_SPECIES];
+      egtransetKTCOR(scaling_coeff);
       for (int n = 0; n < NUM_LITE_SPECIES; ++n) {
         const int i = tparm->liteSpec[n];
         for (int j = 0; j < NUM_SPECIES; ++j) {
@@ -382,7 +384,7 @@ struct SimpleTransport
             chi_mix[i] += Xloc[j] * chi;
           }
         }
-        chi_mix[i] *= Xloc[i];
+        chi_mix[i] *= Xloc[i] * scaling_coeff[n];
       }
     }
   }

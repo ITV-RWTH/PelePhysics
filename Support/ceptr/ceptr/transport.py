@@ -13,8 +13,8 @@ def eval_lite_species(species_info):
     n_lite = 0
     # indizes of the lite_spec position within the species list 
     idx_light_specs = []
-    # dict of the species name and the lite_index
-    spec_dict = {}
+    # computed coefficients of the soret correction
+    spec_correction = []
     n_species = species_info.n_species
     for sp in range(n_species):
         spec = species_info.nonqssa_species[sp]
@@ -23,15 +23,17 @@ def eval_lite_species(species_info):
             s = cf.format_species(species_name)
             n_lite += 1
             idx_light_specs.append(spec.idx)
-            spec_dict[s] = sp
-    return n_lite, idx_light_specs, spec_dict
+            if s == "H":spec_correction.append(0.58)
+            elif s == "H2":spec_correction.append(0.664)
+            else: spec_correction.append(1.0)
+    return n_lite, idx_light_specs, spec_correction
 
 def transport(fstream, mechanism, species_info):
     """Write the transport functions."""
     cw.writer(fstream, cw.comment("Transport function declarations "))
     n_species = species_info.n_species
     species_transport = analyze_transport(mechanism, species_info)
-    n_lite, idx_light_specs, __ = eval_lite_species(species_info)
+    n_lite, idx_light_specs, spec_correction = eval_lite_species(species_info)
 
     misc_trans_info(fstream, kk=n_species, n_lite=n_lite)
     wt(fstream, species_info)
@@ -44,7 +46,7 @@ def transport(fstream, mechanism, species_info):
 
     viscosity(fstream, mechanism, species_info, species_transport, ntfit=50)
     diffcoefs(fstream, species_info, species_transport, ntfit=50)
-    light_specs(fstream, idx_light_specs)
+    light_specs(fstream, idx_light_specs, spec_correction)
     thermaldiffratios(
         fstream,
         species_info,
@@ -592,7 +594,7 @@ def diffcoefs(fstream, species_info, species_transport, ntfit):
     cw.writer(fstream, "}")
 
 
-def light_specs(fstream, speclist):
+def light_specs(fstream, speclist, correction_coefficient):
     """Write list of specs with small weight, dim n_lite."""
     # header
     cw.writer(fstream)
@@ -611,6 +613,20 @@ def light_specs(fstream, speclist):
 
     cw.writer(fstream, "}")
 
+    cw.writer(fstream, "")
+    
+    cw.writer(fstream, cw.comment("List of computed coefficients, adjusting soret term"))
+    # corrections 
+    cw.writer(fstream, "AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE")
+    if len(speclist) > 0:
+        cw.writer(fstream, "void egtransetKTCOR(amrex::Real* KTCOR) {")
+    else:
+        cw.writer(fstream, "void egtransetKTCOR(amrex::Real* /*KTCOR*/) {")
+
+    for i in range(len(speclist)):
+        cw.writer(fstream, f"{'KTCOR'}[{i}] = {correction_coefficient[i]};")
+
+    cw.writer(fstream, "}")
 
 def thermaldiffratios(
     fstream,

@@ -246,7 +246,7 @@ struct InitParm<transport::TransParm<EOSType, transport::SimpleTransport>>
     amrex::ParmParse pp("transport");
     pp.query("use_soret", tparm->use_soret);
     if (tparm->use_soret) {
-      egtransetKTDIF(tparm->liteSpec.data());
+      egtransetKTDIF(tparm->liteSpec.data()); // justin use that instead in PeleLMeX
       egtransetCOFTD(tparm->fittdrat.data());
     }
     for (int i = 0; i < NUM_SPECIES; ++i) {
