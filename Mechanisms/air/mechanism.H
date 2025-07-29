@@ -26,7 +26,6 @@
 #define NUM_ELEMENTS (NUM_GAS_ELEMENTS + NUM_SURFACE_ELEMENTS)
 #define NUM_SPECIES (NUM_GAS_SPECIES + NUM_SURFACE_SPECIES)
 #define NUM_REACTIONS (NUM_GAS_REACTIONS + NUM_SURFACE_REACTIONS)
-#define NUM_LITE_SPECIES 0
 
 #define NUM_IONS 0
 
@@ -1506,6 +1505,12 @@ egtransetKK(int* KK)
   *KK = 2;
 }
 
+AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE void
+egtransetNLITE(int* NLITE)
+{
+  *NLITE = 0;
+}
+
 // Patm in ergs/cm3
 AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE void
 egtransetPATM(amrex::Real* PATM)
@@ -1618,12 +1623,6 @@ egtransetCOFD(amrex::Real* COFD)
 // List of specs with small weight, dim NLITE
 AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE void
 egtransetKTDIF(int* /*KTDIF*/)
-{
-}
-
-// List of computed coefficients, adjusting soret term
-AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE void
-egtransetKTCOR(amrex::Real* /*KTCOR*/)
 {
 }
 

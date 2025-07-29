@@ -53,7 +53,6 @@
 #define NUM_ELEMENTS (NUM_GAS_ELEMENTS + NUM_SURFACE_ELEMENTS)
 #define NUM_SPECIES (NUM_GAS_SPECIES + NUM_SURFACE_SPECIES)
 #define NUM_REACTIONS (NUM_GAS_REACTIONS + NUM_SURFACE_REACTIONS)
-#define NUM_LITE_SPECIES 3
 
 #define NUM_IONS 4
 
@@ -22940,6 +22939,12 @@ egtransetKK(int* KK)
   *KK = 26;
 }
 
+AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE void
+egtransetNLITE(int* NLITE)
+{
+  *NLITE = 3;
+}
+
 // Patm in ergs/cm3
 AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE void
 egtransetPATM(amrex::Real* PATM)
@@ -24808,15 +24813,6 @@ egtransetKTDIF(int* KTDIF)
   KTDIF[0] = 1;
   KTDIF[1] = 2;
   KTDIF[2] = 25;
-}
-
-// List of computed coefficients, adjusting soret term
-AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE void
-egtransetKTCOR(amrex::Real* KTCOR)
-{
-  KTCOR[0] = 0.664;
-  KTCOR[1] = 0.58;
-  KTCOR[2] = 1.0;
 }
 
 // Poly fits for thermal diff ratios, dim NO*NLITE*KK
