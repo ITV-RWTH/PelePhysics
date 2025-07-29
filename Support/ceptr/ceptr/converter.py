@@ -763,6 +763,7 @@ class Converter:
             cw.writer(
                 fstream,
                 f"#define {s}_ID {self.species_info.ordered_idx_map[species]}",
+
             )
             if s[-1] == "n" or s[-1] == "p" or s == "E":
                 nb_ions += 1
@@ -821,6 +822,11 @@ class Converter:
         cw.writer(
             fstream, "#define NUM_REACTIONS (NUM_GAS_REACTIONS + NUM_SURFACE_REACTIONS)"
         )
+        n_lite, __, __ = ctr.eval_lite_species(self.species_info)
+        cw.writer(
+            fstream, f"#define NUM_LITE_SPECIES {n_lite}"
+        )
+
         cw.writer(fstream)
         cw.writer(fstream, f"#define NUM_IONS {nb_ions}")
         cw.writer(fstream)
