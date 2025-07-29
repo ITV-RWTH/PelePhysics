@@ -66,6 +66,7 @@ struct TransParm<EOSType, SimpleTransport>
     0.0};
   bool use_soret = false;
   amrex::GpuArray<int, NUM_LITE_SPECIES> liteSpec = {0};
+  amrex::GpuArray<amrex::Real, NUM_LITE_SPECIES> soretScale = {0.0};
   amrex::GpuArray<amrex::Real, NUM_SPECIES * NUM_FIT * NUM_LITE_SPECIES> fittdrat = {0.0};
   amrex::GpuArray<int, NUM_SPECIES> nlin = {0};
 };
@@ -87,6 +88,7 @@ struct TransParm<eos::SRK, SimpleTransport>
     0.0};
   bool use_soret = false;
   amrex::GpuArray<int, NUM_LITE_SPECIES> liteSpec = {0};
+  amrex::GpuArray<amrex::Real, NUM_LITE_SPECIES> soretScale = {0.0};
   amrex::GpuArray<amrex::Real, NUM_SPECIES * NUM_FIT * NUM_LITE_SPECIES> fittdrat = {0.0};
   amrex::GpuArray<int, NUM_SPECIES> nlin = {0};
   amrex::GpuArray<amrex::Real, 10 * 4> Afac = {0.0};
@@ -246,8 +248,9 @@ struct InitParm<transport::TransParm<EOSType, transport::SimpleTransport>>
     amrex::ParmParse pp("transport");
     pp.query("use_soret", tparm->use_soret);
     if (tparm->use_soret) {
-      egtransetKTDIF(tparm->liteSpec.data()); // justin use that instead in PeleLMeX
+      egtransetKTDIF(tparm->liteSpec.data());
       egtransetCOFTD(tparm->fittdrat.data());
+      egtransetKTCOR(tparm->soretScale.data());
     }
     for (int i = 0; i < NUM_SPECIES; ++i) {
       tparm->iwt[i] = 1. / tparm->wt[i];
@@ -281,6 +284,7 @@ struct InitParm<transport::TransParm<eos::SRK, transport::SimpleTransport>>
     egtransetCOFLAM(tparm->fitlam.data());
     egtransetCOFD(tparm->fitdbin.data());
     egtransetKTDIF(tparm->liteSpec.data());
+    egtransetKTCOR(tparm->soretScale.data());
     egtransetCOFTD(tparm->fittdrat.data());
 
     for (int i = 0; i < NUM_SPECIES; ++i) {

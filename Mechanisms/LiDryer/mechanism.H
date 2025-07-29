@@ -35,8 +35,6 @@
 #define NUM_SPECIES (NUM_GAS_SPECIES + NUM_SURFACE_SPECIES)
 #define NUM_REACTIONS (NUM_GAS_REACTIONS + NUM_SURFACE_REACTIONS)
 #define NUM_LITE_SPECIES 2
-#define H_LITE_IDX 1
-#define H2_LITE_IDX 0
 
 #define NUM_IONS 0
 
@@ -5721,6 +5719,14 @@ egtransetKTDIF(int* KTDIF)
 {
   KTDIF[0] = 0;
   KTDIF[1] = 3;
+}
+
+// List of computed coefficients, adjusting soret term
+AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE void
+egtransetKTCOR(amrex::Real* KTCOR)
+{
+  KTCOR[0] = 0.664;
+  KTCOR[1] = 0.58;
 }
 
 // Poly fits for thermal diff ratios, dim NO*NLITE*KK

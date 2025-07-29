@@ -57,7 +57,7 @@ struct SutherlandTransport
     }
 
     if (wtr_get_chi) {
-      for (int i = 0; i < NUM_SPECIES; ++i) {
+      for (int i = 0; i < NUM_LITE_SPECIES; ++i) {
         chi_mix[i] = 0.0;
       }
     }
@@ -97,7 +97,7 @@ struct SutherlandTransport
 
           amrex::Real muloc, xiloc, lamloc;
           amrex::Real Ddiag[NUM_SPECIES] = {0.0};
-          amrex::Real chi_mix[NUM_SPECIES] = {0.0};
+          amrex::Real chi_mix[NUM_LITE_SPECIES] = {0.0};
           transport(
             wtr_get_xi, wtr_get_mu, wtr_get_lam, wtr_get_Ddiag, wtr_get_chi, T,
             0.0, massloc, Ddiag, chi_mix, muloc, xiloc, lamloc, tparm);
@@ -105,7 +105,9 @@ struct SutherlandTransport
           // mu, xi and lambda are stored after D in the diffusion multifab
           for (int n = 0; n < NUM_SPECIES; ++n) {
             D_out(i, j, k, n) = Ddiag[n];
-            if (wtr_get_chi) {
+          }
+          if (wtr_get_chi) {
+            for (int n = 0; n < NUM_LITE_SPECIES; ++n){
               chi_out(i, j, k, n) = chi_mix[n];
             }
           }
