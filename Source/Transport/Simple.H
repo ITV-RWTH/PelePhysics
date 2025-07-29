@@ -432,7 +432,7 @@ struct SimpleTransport
             D_out(i, j, k, n) = Ddiag[n];
           }
           if (wtr_get_chi) {
-            for (int n = 0; n < NUM_LITE_SPECIES; ++n){
+            for (int n = 0; n < NUM_LITE_SPECIES; ++n) {
               chi_out(i, j, k, n) = chi_mix[n];
             }
           }

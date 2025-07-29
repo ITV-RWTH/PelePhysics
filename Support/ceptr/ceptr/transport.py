@@ -8,10 +8,11 @@ import ceptr.thermo as cth
 import ceptr.writer as cw
 import ceptr.formatter as cf
 
+
 def eval_lite_species(species_info):
     # total number of light species
     n_lite = 0
-    # indizes of the lite_spec position within the species list 
+    # indizes of the lite_spec position within the species list
     idx_light_specs = []
     # computed coefficients of the soret correction
     spec_correction = []
@@ -23,10 +24,14 @@ def eval_lite_species(species_info):
             s = cf.format_species(species_name)
             n_lite += 1
             idx_light_specs.append(spec.idx)
-            if s == "H":spec_correction.append(0.58)
-            elif s == "H2":spec_correction.append(0.664)
-            else: spec_correction.append(1.0)
+            if s == "H":
+                spec_correction.append(0.58)
+            elif s == "H2":
+                spec_correction.append(0.664)
+            else:
+                spec_correction.append(1.0)
     return n_lite, idx_light_specs, spec_correction
+
 
 def transport(fstream, mechanism, species_info):
     """Write the transport functions."""
@@ -614,9 +619,11 @@ def light_specs(fstream, speclist, correction_coefficient):
     cw.writer(fstream, "}")
 
     cw.writer(fstream, "")
-    
-    cw.writer(fstream, cw.comment("List of computed coefficients, adjusting soret term"))
-    # corrections 
+
+    cw.writer(
+        fstream, cw.comment("List of computed coefficients, adjusting soret term")
+    )
+    # corrections
     cw.writer(fstream, "AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE")
     if len(speclist) > 0:
         cw.writer(fstream, "void egtransetKTCOR(amrex::Real* KTCOR) {")
@@ -627,6 +634,7 @@ def light_specs(fstream, speclist, correction_coefficient):
         cw.writer(fstream, f"{'KTCOR'}[{i}] = {correction_coefficient[i]};")
 
     cw.writer(fstream, "}")
+
 
 def thermaldiffratios(
     fstream,

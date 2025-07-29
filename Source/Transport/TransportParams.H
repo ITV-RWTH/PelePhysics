@@ -67,7 +67,8 @@ struct TransParm<EOSType, SimpleTransport>
   bool use_soret = false;
   amrex::GpuArray<int, NUM_LITE_SPECIES> liteSpec = {0};
   amrex::GpuArray<amrex::Real, NUM_LITE_SPECIES> soretScale = {0.0};
-  amrex::GpuArray<amrex::Real, NUM_SPECIES * NUM_FIT * NUM_LITE_SPECIES> fittdrat = {0.0};
+  amrex::GpuArray<amrex::Real, NUM_SPECIES * NUM_FIT * NUM_LITE_SPECIES>
+    fittdrat = {0.0};
   amrex::GpuArray<int, NUM_SPECIES> nlin = {0};
 };
 
@@ -89,7 +90,8 @@ struct TransParm<eos::SRK, SimpleTransport>
   bool use_soret = false;
   amrex::GpuArray<int, NUM_LITE_SPECIES> liteSpec = {0};
   amrex::GpuArray<amrex::Real, NUM_LITE_SPECIES> soretScale = {0.0};
-  amrex::GpuArray<amrex::Real, NUM_SPECIES * NUM_FIT * NUM_LITE_SPECIES> fittdrat = {0.0};
+  amrex::GpuArray<amrex::Real, NUM_SPECIES * NUM_FIT * NUM_LITE_SPECIES>
+    fittdrat = {0.0};
   amrex::GpuArray<int, NUM_SPECIES> nlin = {0};
   amrex::GpuArray<amrex::Real, 10 * 4> Afac = {0.0};
   amrex::GpuArray<amrex::Real, 7 * 4> Bfac = {0.0};
