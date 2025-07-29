@@ -1,13 +1,11 @@
 """Generate C++ files for a mechanism."""
 
-from asyncio import set_event_loop
 import os
 import pathlib
 import shutil
 import subprocess as spr
 
 import numpy as np
-from pandas import set_eng_float_format
 
 import ceptr.ck as cck
 import ceptr.constants as cc
