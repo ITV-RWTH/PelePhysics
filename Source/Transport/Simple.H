@@ -384,7 +384,7 @@ struct SimpleTransport
     }
 
     if (wtr_get_chi) {
-      for (int n = 0; n < tparm->numLite; ++n) {
+      for (int n = 0; n < NUM_LITE_SPECIES; ++n) {
         const int i = tparm->liteSpec[n];
         for (int j = 0; j < NUM_SPECIES; ++j) {
           if (j != i) {
@@ -394,10 +394,10 @@ struct SimpleTransport
               Tloc * (tparm->fittdrat[1 + four_idx_nj] +
                       Tloc * (tparm->fittdrat[2 + four_idx_nj] +
                               Tloc * (tparm->fittdrat[3 + four_idx_nj])));
-            chi_mix[i] += Xloc[j] * chi;
+            chi_mix[n] += Xloc[j] * chi;
           }
         }
-        chi_mix[i] *= Xloc[i];
+        chi_mix[n] *= Xloc[i] * tparm->soretScale[n];
       }
     }
   }
@@ -437,7 +437,7 @@ struct SimpleTransport
 
           amrex::Real muloc, xiloc, lamloc;
           amrex::Real Ddiag[NUM_SPECIES] = {0.0};
-          amrex::Real chi_mix[NUM_SPECIES] = {0.0};
+          amrex::Real chi_mix[NUM_LITE_SPECIES] = {0.0};
           transport(
             wtr_get_xi, wtr_get_mu, wtr_get_lam, wtr_get_Ddiag, wtr_get_chi, T,
             rho, massloc, Ddiag, chi_mix, muloc, xiloc, lamloc, tparm);
@@ -445,7 +445,9 @@ struct SimpleTransport
           //   mu, xi and lambda are stored after D in the diffusion multifab
           for (int n = 0; n < NUM_SPECIES; ++n) {
             D_out(i, j, k, n) = Ddiag[n];
-            if (wtr_get_chi) {
+          }
+          if (wtr_get_chi) {
+            for (int n = 0; n < NUM_LITE_SPECIES; ++n) {
               chi_out(i, j, k, n) = chi_mix[n];
             }
           }
