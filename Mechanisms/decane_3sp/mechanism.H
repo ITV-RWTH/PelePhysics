@@ -859,8 +859,8 @@ GET_T_GIVEN_EY(
   const int maxiter = 200;
   const amrex::Real tol = 1.e-6;
 #endif
-  amrex::Real tmin = 90;   // max lower bound for thermo def
-  amrex::Real tmax = 4000; // min upper bound for thermo def
+  amrex::Real tmin = 300.0;  // max lower bound for thermo def
+  amrex::Real tmax = 3500.0; // min upper bound for thermo def
   amrex::Real e1, emin, emax, cv, t1, dt;
   CKUBMS(tmin, y, emin);
   CKUBMS(tmax, y, emax);
@@ -911,8 +911,8 @@ GET_T_GIVEN_HY(
   const int maxiter = 200;
   const amrex::Real tol = 1.e-6;
 #endif
-  amrex::Real tmin = 90;   // max lower bound for thermo def
-  amrex::Real tmax = 4000; // min upper bound for thermo def
+  amrex::Real tmin = 300.0;  // max lower bound for thermo def
+  amrex::Real tmax = 3500.0; // min upper bound for thermo def
   amrex::Real h1, hmin, hmax, cp, t1, dt;
   CKHBMS(tmin, y, hmin);
   CKHBMS(tmax, y, hmax);
@@ -1816,34 +1816,22 @@ egtransetCOFD(amrex::Real* COFD)
   COFD[5] = 5.50822096E+00;
   COFD[6] = -4.78234659E-01;
   COFD[7] = 1.98512785E-02;
-  COFD[8] = -2.21643795E+01;
-  COFD[9] = 5.41977231E+00;
-  COFD[10] = -4.69168499E-01;
-  COFD[11] = 1.95518107E-02;
-  COFD[12] = -2.24759923E+01;
-  COFD[13] = 5.50822096E+00;
-  COFD[14] = -4.78234659E-01;
-  COFD[15] = 1.98512785E-02;
-  COFD[16] = -1.53110597E+01;
-  COFD[17] = 3.37317428E+00;
-  COFD[18] = -2.24900439E-01;
-  COFD[19] = 9.81228151E-03;
-  COFD[20] = -1.50096252E+01;
-  COFD[21] = 3.25515933E+00;
-  COFD[22] = -2.09710110E-01;
-  COFD[23] = 9.15941830E-03;
-  COFD[24] = -2.21643795E+01;
-  COFD[25] = 5.41977231E+00;
-  COFD[26] = -4.69168499E-01;
-  COFD[27] = 1.95518107E-02;
-  COFD[28] = -1.50096252E+01;
-  COFD[29] = 3.25515933E+00;
-  COFD[30] = -2.09710110E-01;
-  COFD[31] = 9.15941830E-03;
-  COFD[32] = -1.47639411E+01;
-  COFD[33] = 3.15955654E+00;
-  COFD[34] = -1.97590757E-01;
-  COFD[35] = 8.64692156E-03;
+  COFD[8] = -1.53110597E+01;
+  COFD[9] = 3.37317428E+00;
+  COFD[10] = -2.24900439E-01;
+  COFD[11] = 9.81228151E-03;
+  COFD[12] = -2.21643795E+01;
+  COFD[13] = 5.41977231E+00;
+  COFD[14] = -4.69168499E-01;
+  COFD[15] = 1.95518107E-02;
+  COFD[16] = -1.50096252E+01;
+  COFD[17] = 3.25515933E+00;
+  COFD[18] = -2.09710110E-01;
+  COFD[19] = 9.15941830E-03;
+  COFD[20] = -1.47639411E+01;
+  COFD[21] = 3.15955654E+00;
+  COFD[22] = -1.97590757E-01;
+  COFD[23] = 8.64692156E-03;
 }
 
 // List of specs with small weight, dim NLITE

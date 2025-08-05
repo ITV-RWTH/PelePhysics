@@ -683,8 +683,8 @@ GET_T_GIVEN_EY(
   const int maxiter = 200;
   const amrex::Real tol = 1.e-6;
 #endif
-  amrex::Real tmin = 90;   // max lower bound for thermo def
-  amrex::Real tmax = 4000; // min upper bound for thermo def
+  amrex::Real tmin = 300.0;  // max lower bound for thermo def
+  amrex::Real tmax = 5000.0; // min upper bound for thermo def
   amrex::Real e1, emin, emax, cv, t1, dt;
   CKUBMS(tmin, y, emin);
   CKUBMS(tmax, y, emax);
@@ -735,8 +735,8 @@ GET_T_GIVEN_HY(
   const int maxiter = 200;
   const amrex::Real tol = 1.e-6;
 #endif
-  amrex::Real tmin = 90;   // max lower bound for thermo def
-  amrex::Real tmax = 4000; // min upper bound for thermo def
+  amrex::Real tmin = 300.0;  // max lower bound for thermo def
+  amrex::Real tmax = 5000.0; // min upper bound for thermo def
   amrex::Real h1, hmin, hmax, cp, t1, dt;
   CKHBMS(tmin, y, hmin);
   CKHBMS(tmax, y, hmax);
@@ -1609,14 +1609,10 @@ egtransetCOFD(amrex::Real* COFD)
   COFD[5] = 2.99858376E+00;
   COFD[6] = -1.72232643E-01;
   COFD[7] = 7.34804765E-03;
-  COFD[8] = -1.44285962E+01;
-  COFD[9] = 2.99858376E+00;
-  COFD[10] = -1.72232643E-01;
-  COFD[11] = 7.34804765E-03;
-  COFD[12] = -1.42056777E+01;
-  COFD[13] = 2.91297621E+00;
-  COFD[14] = -1.61544771E-01;
-  COFD[15] = 6.90271324E-03;
+  COFD[8] = -1.42056777E+01;
+  COFD[9] = 2.91297621E+00;
+  COFD[10] = -1.61544771E-01;
+  COFD[11] = 6.90271324E-03;
 }
 
 // List of specs with small weight, dim NLITE
