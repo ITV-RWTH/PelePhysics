@@ -46,7 +46,7 @@ struct ConstTransport
       }
     }
     if (wtr_get_chi) {
-      for (int i = 0; i < NUM_SPECIES; ++i) {
+      for (int i = 0; i < NUM_LITE_SPECIES; ++i) {
         chi_mix[i] = tparm->const_thermal_diffusion_ratio;
       }
     }
