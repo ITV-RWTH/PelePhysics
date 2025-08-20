@@ -11,6 +11,7 @@ import ceptr.writer as cw
 
 
 def eval_lite_species(species_info):
+    """Extract lite species, determine H,H2 matrix positions."""
     # total number of light species
     n_lite = 0
     # indizes of the lite_spec position within the species list
