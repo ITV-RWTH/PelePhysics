@@ -437,11 +437,11 @@ struct SimpleTransport
 
           amrex::Real muloc, xiloc, lamloc;
           amrex::Real Ddiag[NUM_SPECIES] = {0.0};
-          #if NUM_LITE_SPECIES == 0
+#if NUM_LITE_SPECIES == 0
           amrex::Real chi_mix[1] = {0.0};
-          #else
+#else
           amrex::Real chi_mix[NUM_LITE_SPECIES] = {0.0};
-          #endif
+#endif
           transport(
             wtr_get_xi, wtr_get_mu, wtr_get_lam, wtr_get_Ddiag, wtr_get_chi, T,
             rho, massloc, Ddiag, chi_mix, muloc, xiloc, lamloc, tparm);

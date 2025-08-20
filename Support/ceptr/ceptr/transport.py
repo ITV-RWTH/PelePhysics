@@ -1,12 +1,13 @@
 """Transport routines."""
 
 from collections import OrderedDict
+
 import numpy as np
 
 import ceptr.constants as cc
+import ceptr.formatter as cf
 import ceptr.thermo as cth
 import ceptr.writer as cw
-import ceptr.formatter as cf
 
 
 def eval_lite_species(species_info):
