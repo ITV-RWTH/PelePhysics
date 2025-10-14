@@ -30,7 +30,7 @@ struct SutherlandTransport
 
     if (wtr_get_mu) {
       mu = tparm->viscosity_mu_ref *
-           std::pow((Tloc / tparm->viscosity_T_ref), 1.5) *
+           std::pow((Tloc / tparm->viscosity_T_ref), tparm->viscosity_power) *
            (tparm->viscosity_T_ref + tparm->viscosity_S) /
            (Tloc + tparm->viscosity_S);
     }

@@ -36,18 +36,33 @@ function abspath() {
     fi;
 }
 
-while getopts ":hf:" option; do
+while getopts ":hf:e:" option; do
    case $option in
       h) # display Help
          help
          exit;;
       f) # filename to convert
          filename=${OPTARG};;
+      e) # boolean flag (set to true if -e is provided)
+         use_eucken=${OPTARG};;  # or any other variable name you prefer
       \?) # Invalid option
          echo "Error: Invalid option"
          exit;;
    esac
 done
+
+# while getopts ":hf:" option; do
+#    case $option in
+#       h) # display Help
+#          help
+#          exit;;
+#       f) # filename to convert
+#          filename=${OPTARG};;
+#       \?) # Invalid option
+#          echo "Error: Invalid option"
+#          exit;;
+#    esac
+# done
 
 if [ -z "${PELE_PHYSICS_HOME+xxx}" ]; then
     remove="Mechanisms"
@@ -71,7 +86,7 @@ echo "Converting ${filename}"
 if command -v poetry &> /dev/null
 then
     poetry update
-    poetry run convert -f "${filename}"
+    poetry run convert -f "${filename}" --use_eucken "${use_eucken}"
 else
     echo "poetry could not be found. We recommend the use of poetry to ensure all necessary packages are available."
     echo "However, this script will proceed with the current python environment (and hope all the packages are available)."
