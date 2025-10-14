@@ -57,6 +57,12 @@ public:
     const amrex::Real sim_dt,
     const int level);
 
+  void sprayInjectionfromDPMFile(
+    const amrex::Real time,
+    SprayJet* spray_jet,
+    const amrex::Real sim_dt,
+    const int level);
+
   /// \brief General initialization routine for uniformly distributed droplets
   /// @param num_part Number of parcels to initialize in each direction
   /// @param vel_part Droplet velocity
@@ -77,7 +83,12 @@ public:
     const amrex::Real num_ppp = 1.);
 
   /// \brief Setup spray parameters
-  static void spraySetup(const amrex::Real* body_force);
+  static void spraySetup(
+    const amrex::Real* body_force,
+    pele::physics::eos::EosParm<pele::physics::PhysicsType::eos_type>*
+      eosparms_h = nullptr,
+    const pele::physics::eos::EosParm<pele::physics::PhysicsType::eos_type>*
+      eosparms_d = nullptr);
 
   /// \brief Read in spray parameters from input file
   static void readSprayParams(int& particle_verbose);

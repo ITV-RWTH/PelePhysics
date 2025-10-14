@@ -44,11 +44,12 @@ struct InitParm<PMF::PmfData::DataContainer>
     }
     pp.get("datafile", datafile);
     read_pmf(datafile, do_average, verbose, parm_in->m_h_parm);
-  };
+  }
 
-  static void
-  host_deallocate(PeleParams<PMF::PmfData::DataContainer>* /*parm_in*/)
+  static void host_deallocate(PeleParams<PMF::PmfData::DataContainer>* parm_in)
   {
+    amrex::The_Pinned_Arena()->free(parm_in->m_h_parm.pmf_X);
+    amrex::The_Pinned_Arena()->free(parm_in->m_h_parm.pmf_Y);
   }
 };
 
