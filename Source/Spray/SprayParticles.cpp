@@ -14,21 +14,21 @@
 using namespace amrex;
 
 void
-SprayParticleContainer::init_bcs()
+SprayParticleContainer::init_bcs(const amrex::BCRec& phys_bc)
 {
   for (int dir = 0; dir < AMREX_SPACEDIM; dir++) {
     if (
-      phys_bc->lo(dir) == amrex::PhysBCType::symmetry ||
-      phys_bc->lo(dir) == amrex::PhysBCType::slipwall ||
-      phys_bc->lo(dir) == amrex::PhysBCType::noslipwall) {
+      phys_bc.lo(dir) == amrex::PhysBCType::symmetry ||
+      phys_bc.lo(dir) == amrex::PhysBCType::slipwall ||
+      phys_bc.lo(dir) == amrex::PhysBCType::noslipwall) {
       reflect_lo[dir] = true;
     } else {
       reflect_lo[dir] = false;
     }
     if (
-      phys_bc->hi(dir) == amrex::PhysBCType::symmetry ||
-      phys_bc->hi(dir) == amrex::PhysBCType::slipwall ||
-      phys_bc->hi(dir) == amrex::PhysBCType::noslipwall) {
+      phys_bc.hi(dir) == amrex::PhysBCType::symmetry ||
+      phys_bc.hi(dir) == amrex::PhysBCType::slipwall ||
+      phys_bc.hi(dir) == amrex::PhysBCType::noslipwall) {
       reflect_hi[dir] = true;
     } else {
       reflect_hi[dir] = false;
@@ -331,13 +331,12 @@ SprayParticleContainer::updateParticles(
         ParticleType& p = pstruct[pid];
         if (p.id() > 0) {
           auto eos = pele::physics::PhysicsType::eos(fdat->eosparm);
-          SprayUnits SPU;
           GasPhaseVals gpv;
           GpuArray<Real, SPRAY_FUEL_NUM>
             cBoilT; // Boiling temperature at current pressure
           eos.molecular_weight(gpv.mw.data());
           for (int n = 0; n < NUM_SPECIES; ++n) {
-            gpv.mw[n] *= SPU.mass_conv;
+            gpv.mw[n] *= SprayUnits::mass_conv;
           }
           GpuArray<IntVect, AMREX_D_PICK(2, 4, 8)>
             indx_array; // array of adjacent cells
