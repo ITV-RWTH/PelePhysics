@@ -1,4 +1,5 @@
 #include <turbinflow.H>
+#include <mechanism.H>
 
 namespace pele::physics::turbinflow {
 void
@@ -129,19 +130,81 @@ TurbInflow::init(amrex::Geometry const& /*geom*/)
           tp[n].nplane, tp[n].nplane, amrex::min<int>(tp[n].nplane, npts[2]));
       }
 
+      AMREX_D_TERM(, , tp[n].kmax = npts[2];)
+
+      // Optional species header (backward compatible). Immediately after the
+      // periodicity line, the turb file may declare species mass-fraction
+      // planes as: "SPECIES <n> <name1> ... <nameN>". Legacy (velocity-only)
+      // files jump straight to the integer plane offsets, so we peek the next
+      // whitespace-delimited token to tell the two apart.
+      std::string first_tok;
+      is >> first_tok;
+      const bool has_species_hdr = (first_tok == "SPECIES");
+      if (has_species_hdr) {
+        is >> tp[n].n_species;
+        AMREX_ALWAYS_ASSERT_WITH_MESSAGE(
+          tp[n].n_species >= 0, "Negative species count in turb file HDR");
+        tp[n].spec_names.resize(tp[n].n_species);
+        for (int s = 0; s < tp[n].n_species; ++s) {
+          is >> tp[n].spec_names[s];
+        }
+      }
+      tp[n].ncomp = AMREX_SPACEDIM + tp[n].n_species;
+
+      // Resolve file species names to mechanism species indices
+      if (tp[n].n_species > 0) {
+        amrex::Vector<std::string> mech_names(NUM_SPECIES);
+        CKSYMS_STR(mech_names);
+        tp[n].spec_idx.resize(tp[n].n_species);
+        for (int s = 0; s < tp[n].n_species; ++s) {
+          int found = -1;
+          for (int m = 0; m < NUM_SPECIES; ++m) {
+            if (mech_names[m] == tp[n].spec_names[s]) {
+              found = m;
+              break;
+            }
+          }
+          AMREX_ALWAYS_ASSERT_WITH_MESSAGE(
+            found >= 0,
+            "TurbInflow: a species listed in the turb file was not found in "
+            "the active mechanism");
+          tp[n].spec_idx[s] = found;
+        }
+        tp[n].spec_idx_d.resize(tp[n].n_species);
+        amrex::Gpu::copy(
+          amrex::Gpu::hostToDevice, tp[n].spec_idx.begin(),
+          tp[n].spec_idx.end(), tp[n].spec_idx_d.begin());
+        if (tp[n].verbose > 0) {
+          amrex::Print() << "  turbInflow " << tp_list[n] << " projects "
+                         << tp[n].n_species << " species:";
+          for (int s = 0; s < tp[n].n_species; ++s) {
+            amrex::Print() << " " << tp[n].spec_names[s];
+          }
+          amrex::Print() << "\n";
+        }
+      }
+
       amrex::Box sbx(
         amrex::IntVect(AMREX_D_DECL(0, 0, 0)),
         amrex::IntVect(
           AMREX_D_DECL(npts[0] - 1, npts[1] - 1, tp[n].nplane - 1)));
 
-      tp[n].sdata = new amrex::FArrayBox(sbx, 3, amrex::The_Async_Arena());
+      tp[n].sdata =
+        new amrex::FArrayBox(sbx, tp[n].ncomp, amrex::The_Async_Arena());
 
-      AMREX_D_TERM(, , tp[n].kmax = npts[2];)
-
-      // Offset for each plane in Binary TurbFile
-      tp[n].offset.resize(tp[n].kmax * AMREX_SPACEDIM);
-      for (auto& off : tp[n].offset) {
-        is >> off;
+      // Offset for each plane in Binary TurbFile. There are ncomp * kmax
+      // planes: the AMREX_SPACEDIM velocity components first, then any species.
+      tp[n].offset.resize(tp[n].kmax * tp[n].ncomp);
+      if (has_species_hdr) {
+        for (auto& off : tp[n].offset) {
+          is >> off;
+        }
+      } else {
+        // first_tok was actually the first plane offset for a legacy file
+        tp[n].offset[0] = std::stol(first_tok);
+        for (long i = 1; i < static_cast<long>(tp[n].offset.size()); ++i) {
+          is >> tp[n].offset[i];
+        }
       }
 
       if (tp[n].istimeplanes) {
@@ -164,9 +227,15 @@ TurbInflow::add_turb(
   amrex::Geometry const& geom,
   const amrex::Real time,
   const int dir,
-  const amrex::Orientation::Side& side)
+  const amrex::Orientation::Side& side,
+  const int spec_comp)
 {
   AMREX_ALWAYS_ASSERT(turbinflow_initialized);
+
+  // Sentinel marking an inflow cell not covered by a turb patch: species are
+  // only projected where the patch provides data, so uncovered cells keep this
+  // value and are skipped by set_turb_species (mass fractions are always >= 0).
+  constexpr amrex::Real spec_sentinel = -1.0;
 
   // Box on which we will access data
   amrex::Box bvalsBox = bx;
@@ -187,8 +256,24 @@ TurbInflow::add_turb(
   const amrex::IntVect lo(AMREX_D_DECL(tr1Lo, tr2Lo, planeLoc));
   const amrex::IntVect hi(AMREX_D_DECL(tr1Hi, tr2Hi, planeLoc));
   amrex::Box turbBox(lo, hi);
-  amrex::FArrayBox v(turbBox, 3, amrex::The_Async_Arena());
-  v.setVal<amrex::RunOn::Device>(0);
+
+  // Number of species-mass-fraction planes to project on this face. Species
+  // are only handled when the caller supplies a target component (spec_comp)
+  // in the state FAB.
+  int nSpecFace = 0;
+  if (spec_comp >= 0) {
+    for (auto& tpn : tp) {
+      if (tpn.dir == dir && tpn.side == side) {
+        nSpecFace = amrex::max<int>(nSpecFace, tpn.n_species);
+      }
+    }
+  }
+
+  amrex::FArrayBox v(turbBox, 3 + nSpecFace, amrex::The_Async_Arena());
+  v.setVal<amrex::RunOn::Device>(0.0, turbBox, 0, 3); // velocity accumulator
+  if (nSpecFace > 0) {
+    v.setVal<amrex::RunOn::Device>(spec_sentinel, turbBox, 3, nSpecFace);
+  }
 
   // Add turbulence from all the tp acting on this face
   for (auto& tpn : tp) {
@@ -220,11 +305,51 @@ TurbInflow::add_turb(
         z = (time + tpn.time_shift) * tpn.turb_conv_vel * tpn.turb_scale_loc;
       }
       fill_turb_plane(tpn, x, y, z, v);
+
+      // Project this patch's species onto the state right away (species use
+      // SET, not superposition), then reset the species slots so a subsequent
+      // overlapping patch starts from the sentinel again.
+      if (spec_comp >= 0 && tpn.n_species > 0) {
+        set_turb_species(dir, tdir1, tdir2, v, data, spec_comp, tpn);
+        v.setVal<amrex::RunOn::Device>(spec_sentinel, turbBox, 3, tpn.n_species);
+      }
     }
   }
 
-  // Moving it into data
+  // Moving the velocity fluctuations into data
   set_turb(dir, tdir1, tdir2, v, data, dcomp);
+}
+
+void
+TurbInflow::set_turb_species(
+  int normDir,
+  int transDir1,
+  int transDir2,
+  amrex::FArrayBox& v,
+  amrex::FArrayBox& data,
+  const int spec_comp,
+  const TurbParm& a_tp)
+{
+  const auto& box = v.box(); // z-normal plane
+  const auto& v_in = v.array();
+  const auto& v_out = data.array();
+  const int nspec = a_tp.n_species;
+  const int* sidx = a_tp.spec_idx_d.data();
+
+  amrex::ParallelFor(box, [=] AMREX_GPU_DEVICE(int i, int j, int k) noexcept {
+    // From z-normal box index to data box index
+    int idx[3] = {0};
+    idx[transDir1] = i;
+    idx[transDir2] = j;
+    idx[normDir] = k;
+    for (int c = 0; c < nspec; ++c) {
+      const amrex::Real val = v_in(i, j, k, AMREX_SPACEDIM + c);
+      // Skip cells not covered by this patch (sentinel < 0)
+      if (val >= 0.0) {
+        v_out(idx[0], idx[1], idx[2], spec_comp + sidx[c]) = val;
+      }
+    }
+  });
 }
 
 void
@@ -275,7 +400,7 @@ TurbInflow::read_one_turb_plane(TurbParm& a_tp, int iplane, int k)
   dstBox.setSmall(AMREX_SPACEDIM - 1, iplane);
   dstBox.setBig(AMREX_SPACEDIM - 1, iplane);
 
-  for (int n = 0; n < AMREX_SPACEDIM; ++n) {
+  for (int n = 0; n < a_tp.ncomp; ++n) {
 
     const long offset_idx = k + (n * a_tp.kmax);
     AMREX_ALWAYS_ASSERT_WITH_MESSAGE(
@@ -424,6 +549,11 @@ TurbInflow::fill_turb_plane(
   const auto& tile_per = a_tp.tile_periodic;
   const auto& periodicity = a_tp.periodicity;
   const bool lininterp = a_tp.interp_type == TurbInterpType::linear;
+  // Number of components to project into v. sdata always holds a_tp.ncomp
+  // (velocity + species), but v may be velocity-only (e.g. a velocity-only
+  // add_turb call, or a caller that did not request species), so never write
+  // past v's component count.
+  const int lncomp = amrex::min<int>(a_tp.ncomp, v.nComp());
   amrex::Real cz[3];
   int k0 = -1;
   if (a_tp.istimeplanes) {
@@ -501,7 +631,7 @@ TurbInflow::fill_turb_plane(
             "direction and extrap_nonperiodic option not used");
         }
 
-        for (int n = 0; n < AMREX_SPACEDIM; ++n) {
+        for (int n = 0; n < lncomp; ++n) {
           for (int ii = 0; ii <= 2; ++ii) {
             for (int jj = 0; jj <= 2; ++jj) {
               zdata[ii][jj] = cz[0] * sd(i0 + ii, j0 + jj, k0, n) +
@@ -513,8 +643,16 @@ TurbInflow::fill_turb_plane(
             ydata[ii] = cy[0] * zdata[ii][0] + cy[1] * zdata[ii][1] +
                         cy[2] * zdata[ii][2];
           }
-          vd(i, j, k, n) +=
-            velScale * (cx[0] * ydata[0] + cx[1] * ydata[1] + cx[2] * ydata[2]);
+          const amrex::Real interp =
+            cx[0] * ydata[0] + cx[1] * ydata[1] + cx[2] * ydata[2];
+          if (n < AMREX_SPACEDIM) {
+            // Velocity fluctuation: scaled, sign-flipped on the high side,
+            // and superimposed across overlapping patches.
+            vd(i, j, k, n) += velScale * interp;
+          } else {
+            // Species mass fraction: passive scalar, projected as-is (SET).
+            vd(i, j, k, n) = interp;
+          }
         }
       }
     }

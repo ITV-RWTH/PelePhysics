@@ -65,6 +65,13 @@ and the mean inflow velocity must be provided through another means. For each co
 in `Exec/RegTests/TurbInflow`. Inputs are available as part of this utility to rescale the data as needed. If differently shaped inlet patches
 are required, this must be done by masking undesired parts of the patch on the PeleC or PeleLMeX side of the implementation.
 
+In addition to the three velocity components, a turbulence file may also carry selected species mass fractions, which are then projected
+onto the inflow. The species present in a file are recorded in its ``HDR`` and are matched by name to the active mechanism at runtime;
+species that are not present in the file are left to be set by the flow solver as usual. Unlike the velocity fluctuations, projected species
+mass fractions are applied directly (no velocity-style scaling or sign flip). The flow solver must forward the projected values to its
+inflow boundary routine; the `Exec/RegTests/TurbInflowSpecies` case in PeleLMeX shows how this is done. Turbulence files that contain only
+velocity data continue to work unchanged.
+
 Generating a turbulence file
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

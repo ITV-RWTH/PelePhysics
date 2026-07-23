@@ -14,11 +14,13 @@ print_usage(int, char* argv[])
   std::cerr << "      level=<AMR level from DiagFramePlanes to use, DEF=0>\n";
   std::cerr << "      periodicity=<of input planes, DEF='1 1 1'>\n";
   std::cerr << "      normal=<normal dir for input DiagFramePlanes>\n";
+  std::cerr << "      species=<optional species mass fractions, e.g. 'O2 N2'>\n";
   std::cerr << "   Additional inputs for type=periodic_plt:\n";
   std::cerr << "      ifile=<Plt file, must be per in norm direction>\n";
   std::cerr << "      normal=<normal direction for planes being extracted>\n";
   std::cerr << "      level=<AMR level from Plot file to use, DEF=0>\n";
   std::cerr << "      periodicity=<periodicity of Plot file, DEF='1 1 1'>\n";
+  std::cerr << "      species=<optional species mass fractions, e.g. 'O2 N2'>\n";
   std::cerr << "   Additional inputs for type=turb_box:\n";
   std::cerr << "      hit_file=<cubic isotropic turbulence file to use>\n";
   std::cerr << "      input_ncell=<ncells in each direction in turb_file>\n";

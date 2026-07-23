@@ -3,6 +3,7 @@
 
 #include <AMReX_FArrayBox.H>
 #include <AMReX_GpuMemory.H>
+#include <AMReX_GpuContainers.H>
 #include <AMReX_Geometry.H>
 #include <AMReX_ParmParse.H>
 
@@ -64,6 +65,19 @@ struct TurbParm
 
   amrex::Vector<long> offset;
   int kmax; // Number of plane in Turbfile
+
+  // Optional species mass-fraction planes carried by the turb file, in
+  // addition to the 3 velocity components. These are stored in the file
+  // after the velocity components (component-major order). Species are
+  // projected onto the inflow just like velocity, but without the velocity
+  // scaling / high-side sign flip (they are passive scalars).
+  int n_species = 0; // Number of species planes stored in the turb file
+  int ncomp =
+    AMREX_SPACEDIM; // Total number of stored components (velocity + species)
+  amrex::Vector<std::string> spec_names; // Species names, in file order
+  amrex::Vector<int>
+    spec_idx; // Mechanism index for each file species (host, file order)
+  amrex::Gpu::DeviceVector<int> spec_idx_d; // ... same mapping on device
 };
 
 struct TurbInflow
@@ -82,9 +96,38 @@ public:
     amrex::Geometry const& geom,
     const amrex::Real time,
     const int dir,
-    const amrex::Orientation::Side& side);
+    const amrex::Orientation::Side& side,
+    const int spec_comp = -1);
 
   bool is_initialized() const { return turbinflow_initialized; }
+
+  // Total number of species-mass-fraction planes carried by any turb patch.
+  // Zero for legacy (velocity-only) turb files.
+  int max_turb_species() const
+  {
+    int n = 0;
+    for (const auto& t : tp) {
+      n = amrex::max<int>(n, t.n_species);
+    }
+    return n;
+  }
+
+  // For each mechanism species index in [0, num_species), returns 1 if any
+  // turb patch provides that species (and hence seeds it into the state at
+  // the inflow), 0 otherwise. Used by the flow solver to know which species
+  // to pick up from the seeded inflow data.
+  amrex::Vector<int> turb_species_flags(int num_species) const
+  {
+    amrex::Vector<int> flags(num_species, 0);
+    for (const auto& t : tp) {
+      for (int idx : t.spec_idx) {
+        if (idx >= 0 && idx < num_species) {
+          flags[idx] = 1;
+        }
+      }
+    }
+    return flags;
+  }
 
   // Override the through-plane sampling position with a supplied physical
   // convected distance (e.g. the time-integrated inlet velocity). Applies to
@@ -115,6 +158,18 @@ public:
     amrex::FArrayBox& v,
     amrex::FArrayBox& data,
     const int dcomp);
+
+  // Copy the species mass-fraction planes accumulated in v (stored at
+  // components [AMREX_SPACEDIM, AMREX_SPACEDIM + a_tp.n_species)) into the
+  // state FAB, at component spec_comp + mechanism_index for each file species.
+  static void set_turb_species(
+    int normDir,
+    int transDir1,
+    int transDir2,
+    amrex::FArrayBox& v,
+    amrex::FArrayBox& data,
+    const int spec_comp,
+    const TurbParm& a_tp);
 
 private:
   amrex::Vector<TurbParm> tp;
