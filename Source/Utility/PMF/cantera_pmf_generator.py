@@ -14,7 +14,7 @@ import re
 
 import numpy as np
 import yaml
-from cantera import Solution, FreeFlame
+from cantera import CanteraError, Solution, FreeFlame
 
 #################################################################
 # Parse arguments
@@ -288,7 +288,11 @@ f.energy_enabled = True
 f.set_refine_criteria(ratio=5.0, slope=0.5, curve=0.5)
 
 # Calculation
-f.solve(loglevel, refine_grid)
+try:
+    f.solve(loglevel, refine_grid)
+except CanteraError:
+    print("Ignition failed on the coarse grid, retrying with Cantera continuation")
+    f.solve(loglevel, refine_grid, auto=True)
 
 #################
 # Third flame and so on ...:
