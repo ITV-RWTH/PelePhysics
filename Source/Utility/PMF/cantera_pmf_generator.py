@@ -30,7 +30,12 @@ parser.add_argument(
     "-m",
     "--mechanism",
     default="drm19",
-    help="Name of PelePhysics mechanism from Mechanisms",
+    help=(
+        "Name of PelePhysics mechanism from Mechanisms, i.e. the directory "
+        "holding it relative to Mechanisms. Sub-mechanisms of a collection are "
+        "given as a path (C3MechLite_v401/H2-NH3_25sp_noHeAr), or by their "
+        "innermost directory alone when that name is unambiguous"
+    ),
 )
 parser.add_argument(
     "-pp", "--pp_home", default="../../../", help="Path to PelePhysics directory"
@@ -156,8 +161,66 @@ tol_ts = [1.0e-8, 1.0e-9]  # [rtol atol] for time stepping
 loglevel = args.verbose  # amount of diagnostic output
 refine_grid = True  # True to enable refinement
 
+#################
+# Find mechanism in PelePhysics
+pp_path = os.path.join(args.pp_home, "Mechanisms")
+if not (os.path.exists(pp_path)):
+    raise RuntimeError("Invalid path to PelePhysics: " + args.pp_home)
+
+mech_paths = [
+    re.sub(r'\s--plog=\S+', '', name).strip()
+    for name in open(os.path.join(pp_path, "list_mech")).readlines()
+    if not name.startswith("#")
+]
+# A mechanism is named by the directory holding it, relative to Mechanisms.
+# Collections such as C3MechLite keep their sub-mechanisms one level deeper, so
+# that name may itself be a path, e.g. C3MechLite_v401/H2-NH3_25sp_noHeAr.
+mech_names = [os.path.dirname(name) for name in mech_paths]
+mech_paths = dict(zip(mech_names, mech_paths))
+
+# QSS: we will solve with skeletal mechanism, then eliminate QSS species
+qss_data = [
+    name.split()
+    for name in open(os.path.join(pp_path, "list_qss_mech")).readlines()
+    if not name.startswith("#")
+]
+qss_names = [os.path.dirname(name[0]) for name in qss_data]
+qss_paths = dict(zip(qss_names, [name[2] for name in qss_data]))
+qss_nonqss = dict(zip(qss_names, [name[3] for name in qss_data]))
+
+# The innermost directory alone is accepted as a shorthand for a nested
+# mechanism whenever it is unambiguous, so that -m H2-NH3_25sp_noHeAr works as
+# well as the full -m C3MechLite_v401/H2-NH3_25sp_noHeAr.
+all_names = mech_names + qss_names
+basenames = [os.path.basename(name) for name in all_names]
+shorthands = {
+    base: name
+    for base, name in zip(basenames, all_names)
+    if basenames.count(base) == 1 and base not in all_names
+}
+mechanism = shorthands.get(mechanism, mechanism)
+
+if mechanism in mech_names:
+    mech_has_qssa = False
+    mech_path = mech_paths[mechanism]
+elif mechanism in qss_names:
+    mech_has_qssa = True
+    mech_path = qss_paths[mechanism]
+    with open(os.path.join(pp_path, qss_nonqss[mechanism])) as f:
+        nonqss_spec_list = yaml.safe_load(f)["species"]
+else:
+    raise RuntimeError(
+        "Requested mechanism ("
+        + mechanism
+        + ") found in neither list_mech or list_qssa_mech"
+    )
+mech_path = os.path.join(pp_path, mech_path)
+
+#################
 # Print information
-label_pre = "pmf-" + mechanism
+# A nested mechanism name carries a directory prefix that must not leak into the
+# file names, so the innermost directory is used to tag the solutions.
+label_pre = "pmf-" + os.path.basename(mechanism)
 if Y_species is not None:
     num_input_species = len([item for item in Y_species.split(',') if ':' in item])
     label = "Y" + str(num_input_species) + "_T" + str(tin) + "_P" + str(p)
@@ -178,51 +241,13 @@ if transport != "mixture-averaged" or soret:
     label += "_" + transport_tags[transport] + ("Soret" if soret else "")
 
 #################
-# Find mechanism in PelePhysics
-pp_path = os.path.join(args.pp_home, "Mechanisms")
+# Directory the solutions are written to
 if args.output is None:
     outdir = os.path.join(pp_path, mechanism, "PMFs")
 else:
     outdir = args.output
 if not os.path.exists(outdir):
     os.makedirs(outdir)
-
-if not (os.path.exists(pp_path)):
-    raise RuntimeError("Invalid path to PelePhysics: " + args.pp_home)
-
-mech_paths = [
-    re.sub(r'\s--plog=\S+', '', name).strip()
-    for name in open(os.path.join(pp_path, "list_mech")).readlines()
-    if not name.startswith("#")
-]
-mech_names = [name.split("/")[0] for name in mech_paths]
-mech_paths = dict(zip(mech_names, mech_paths))
-
-# QSS: we will solve with skeletal mechanism, then eliminate QSS species
-qss_data = [
-    name.split()
-    for name in open(os.path.join(pp_path, "list_qss_mech")).readlines()
-    if not name.startswith("#")
-]
-qss_names = [name[0].split("/")[0] for name in qss_data]
-qss_paths = dict(zip(qss_names, [name[2] for name in qss_data]))
-qss_nonqss = dict(zip(qss_names, [name[3] for name in qss_data]))
-
-if mechanism in mech_names:
-    mech_has_qssa = False
-    mech_path = mech_paths[mechanism]
-elif mechanism in qss_names:
-    mech_has_qssa = True
-    mech_path = qss_paths[mechanism]
-    with open(os.path.join(pp_path, qss_nonqss[mechanism])) as f:
-        nonqss_spec_list = yaml.safe_load(f)["species"]
-else:
-    raise RuntimeError(
-        "Requested mechanism ("
-        + mechanism
-        + ") found in neither list_mech or list_qssa_mech"
-    )
-mech_path = os.path.join(pp_path, mech_path)
 
 #################
 # Create and Run Flame:
