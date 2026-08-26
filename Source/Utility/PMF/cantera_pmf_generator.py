@@ -23,6 +23,7 @@ parser = argparse.ArgumentParser(
     prog="Cantera PMF Generator",
     description="Use Cantera to solve a 1D premixed flame and save in a Pele-readable format",
     formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    fromfile_prefix_chars='@',
 )
 
 parser.add_argument(
@@ -60,6 +61,36 @@ parser.add_argument(
     "-p", "--pressure", default=101325, type=float, help="Pressure [Pa]"
 )
 parser.add_argument("-phi", "--phi", default=1.0, type=float, help="Equivalence Ratio")
+parser.add_argument(
+    "-tr",
+    "--transport",
+    default="mixture-averaged",
+    choices=[
+        "mixture-averaged",
+        "multicomponent",
+        "unity-Lewis-number",
+        "mixture-averaged-CK",
+        "multicomponent-CK",
+        # legacy Cantera (<3.0) spellings, kept for convenience
+        "Mix",
+        "Multi",
+        "UnityLewis",
+        "CK_Mix",
+        "CK_Multi",
+    ],
+    help="Cantera transport model used for the flame solution",
+)
+parser.add_argument(
+    "-s",
+    "--soret",
+    action="store_true",
+    help=(
+        "Include thermal diffusion (Soret effect). Support depends on the "
+        "transport model and the Cantera version in use (older Cantera releases "
+        "only evaluate thermal diffusion coefficients for the multicomponent "
+        "models); Cantera raises an error if the combination is unsupported"
+    ),
+)
 parser.add_argument("-d", "--domain", default=0.04, type=float, help="Domain width [m]")
 parser.add_argument("-v", "--verbose", default=1, type=int, help="Verbosity level")
 parser.add_argument(
@@ -87,7 +118,31 @@ Y_species = args.massfrac
 p = args.pressure  # pressure [Pa]
 tin = args.temperature  # unburned gas temperature [K]
 phi = args.phi  # Eq. ratio [-]
-transport = "Mix"  # Cantera transport model
+
+# Cantera transport model. The legacy spellings are deprecated in Cantera >= 3.0,
+# so map them onto the current names before handing them to Cantera.
+transport_aliases = {
+    "Mix": "mixture-averaged",
+    "Multi": "multicomponent",
+    "UnityLewis": "unity-Lewis-number",
+    "CK_Mix": "mixture-averaged-CK",
+    "CK_Multi": "multicomponent-CK",
+}
+transport = transport_aliases.get(args.transport, args.transport)
+multicomponent_models = ("multicomponent", "multicomponent-CK")
+soret = args.soret
+
+# Recent Cantera versions also evaluate thermal diffusion coefficients outside of
+# the multicomponent models, so no combination is screened out here: if the
+# installed Cantera cannot enable Soret for the requested transport model, it
+# raises the error itself when f.soret_enabled is set below.
+
+# Multicomponent transport is expensive and less robust from a cold start, so the
+# refinement ladder below is always run mixture-averaged and the final solution is
+# continued onto the requested model.
+ladder_transport = (
+    "mixture-averaged" if transport in multicomponent_models else transport
+)
 
 # Refined grid at inlet and outlet, 6 points in x-direction :
 domain_size = args.domain  # Domain size [m]
@@ -108,6 +163,19 @@ if Y_species is not None:
     label = "Y" + str(num_input_species) + "_T" + str(tin) + "_P" + str(p)
 else:
     label = fuel_species.split(":")[0] + "_PHI" + str(phi) + "_T" + str(tin) + "_P" + str(p)
+
+# Tag the file name with the transport model so that solutions obtained with
+# different models do not overwrite each other. The default (mixture-averaged,
+# no Soret) keeps the historical file names untouched.
+transport_tags = {
+    "mixture-averaged": "Mix",
+    "multicomponent": "Multi",
+    "unity-Lewis-number": "UnityLe",
+    "mixture-averaged-CK": "MixCK",
+    "multicomponent-CK": "MultiCK",
+}
+if transport != "mixture-averaged" or soret:
+    label += "_" + transport_tags[transport] + ("Soret" if soret else "")
 
 #################
 # Find mechanism in PelePhysics
@@ -176,7 +244,7 @@ f = FreeFlame(gas, initial_grid)
 f.flame.set_steady_tolerances(default=tol_ss)
 f.flame.set_transient_tolerances(default=tol_ts)
 
-f.transport_model = transport
+f.transport_model = ladder_transport
 
 # No energy for starters
 f.energy_enabled = False
@@ -225,7 +293,23 @@ f.set_refine_criteria(ratio=2.0, slope=0.02, curve=0.02, prune=0.01)
 
 f.solve(loglevel, refine_grid)
 
-print("mixture averaged flamespeed = ", f.velocity[0])
+##################
+# Continuation onto the requested transport model, then onto Soret:
+
+if transport != ladder_transport:
+    f.transport_model = transport
+    f.solve(loglevel, refine_grid)
+
+if soret:
+    f.soret_enabled = True
+    f.solve(loglevel, refine_grid)
+
+print(
+    transport
+    + (" + Soret" if soret else "")
+    + " flamespeed = ",
+    f.velocity[0],
+)
 
 #################################################################
 # Save your results
