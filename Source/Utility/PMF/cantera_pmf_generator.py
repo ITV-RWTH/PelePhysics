@@ -323,13 +323,6 @@ if soret:
     f.soret_enabled = True
     f.solve(loglevel, refine_grid)
 
-print(
-    transport
-    + (" + Soret" if soret else "")
-    + " flamespeed = ",
-    f.velocity[0],
-)
-
 #################################################################
 # Save your results
 #################################################################
@@ -337,6 +330,7 @@ print(
 # Always save with Mole Fractions of all species and CGS units
 nz = f.flame.n_points
 csv_file = os.path.join(outdir, str(label_pre + "-" + label + "-X.dat"))
+pmf_file = csv_file
 with open(csv_file, "w") as outfile:
     writer = csv.writer(
         outfile, delimiter=" ", quotechar=" ", quoting=csv.QUOTE_MINIMAL
@@ -389,3 +383,19 @@ if mech_has_qssa:
                 ]
             )
     print("Maximum local total mole fraction of QSS species: ", max_total_qss)
+
+#################################################################
+# Summary
+#################################################################
+
+# Thermal flame thickness, based on the steepest temperature gradient
+flame_thickness = (f.T[-1] - f.T[0]) / np.abs(np.gradient(f.T, f.grid)).max()
+
+print("")
+print("Summary for " + transport + (" + Soret" if soret else "") + ":")
+print("  flamespeed              = %.6g m/s" % f.velocity[0])
+print("  thermal flame thickness = %.6g m (%.4g mm)"
+      % (flame_thickness, 1e3 * flame_thickness))
+print("  burned gas temperature  = %.6g K" % f.T[-1])
+print("  grid points             = %d" % f.flame.n_points)
+print("  written to " + pmf_file)
