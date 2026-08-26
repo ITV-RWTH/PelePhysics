@@ -33,7 +33,7 @@ parser.add_argument(
     help=(
         "Name of PelePhysics mechanism from Mechanisms, i.e. the directory "
         "holding it relative to Mechanisms. Sub-mechanisms of a collection are "
-        "given as a path (C3MechLite_v401/H2-NH3_25sp_noHeAr), or by their "
+        "given as a path, or by their "
         "innermost directory alone when that name is unambiguous"
     ),
 )
@@ -124,8 +124,6 @@ p = args.pressure  # pressure [Pa]
 tin = args.temperature  # unburned gas temperature [K]
 phi = args.phi  # Eq. ratio [-]
 
-# Cantera transport model. The legacy spellings are deprecated in Cantera >= 3.0,
-# so map them onto the current names before handing them to Cantera.
 transport_aliases = {
     "Mix": "mixture-averaged",
     "Multi": "multicomponent",
@@ -136,11 +134,6 @@ transport_aliases = {
 transport = transport_aliases.get(args.transport, args.transport)
 multicomponent_models = ("multicomponent", "multicomponent-CK")
 soret = args.soret
-
-# Recent Cantera versions also evaluate thermal diffusion coefficients outside of
-# the multicomponent models, so no combination is screened out here: if the
-# installed Cantera cannot enable Soret for the requested transport model, it
-# raises the error itself when f.soret_enabled is set below.
 
 # Multicomponent transport is expensive and less robust from a cold start, so the
 # refinement ladder below is always run mixture-averaged and the final solution is
@@ -173,8 +166,6 @@ mech_paths = [
     if not name.startswith("#")
 ]
 # A mechanism is named by the directory holding it, relative to Mechanisms.
-# Collections such as C3MechLite keep their sub-mechanisms one level deeper, so
-# that name may itself be a path, e.g. C3MechLite_v401/H2-NH3_25sp_noHeAr.
 mech_names = [os.path.dirname(name) for name in mech_paths]
 mech_paths = dict(zip(mech_names, mech_paths))
 
@@ -189,8 +180,7 @@ qss_paths = dict(zip(qss_names, [name[2] for name in qss_data]))
 qss_nonqss = dict(zip(qss_names, [name[3] for name in qss_data]))
 
 # The innermost directory alone is accepted as a shorthand for a nested
-# mechanism whenever it is unambiguous, so that -m H2-NH3_25sp_noHeAr works as
-# well as the full -m C3MechLite_v401/H2-NH3_25sp_noHeAr.
+# mechanism whenever it is unambiguous.
 all_names = mech_names + qss_names
 basenames = [os.path.basename(name) for name in all_names]
 shorthands = {
