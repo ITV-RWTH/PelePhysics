@@ -44,6 +44,18 @@ turbinflow_from_periodic_plt(std::ofstream& ifsd, std::ofstream& ifsh)
   } else {
     amrex::Abort("invalid normal");
   }
+
+  // Optional list of species mass fractions to also project onto the inflow.
+  // The user supplies bare species names (e.g. "species = O2 N2"); these are
+  // read from the plt file as the "Y(<name>)" variables and stored in the
+  // turb file (their names are recorded in the HDR so the flow solver can
+  // map them to its mechanism).
+  amrex::Vector<std::string> species;
+  pp.queryarr("species", species);
+  for (const auto& s : species) {
+    varnames.push_back("Y(" + s + ")");
+  }
+
   amrex::Vector<int> varidx;
   varidx.resize(varnames.size());
 
@@ -98,6 +110,16 @@ turbinflow_from_periodic_plt(std::ofstream& ifsd, std::ofstream& ifsh)
   ifsh << planeSize[0] + 2 * dx[0] << ' ' << planeSize[1] + 2 * dx[1] << ' '
        << planeSize[2] << '\n';
   ifsh << perio[dim_map[0]] << ' ' << perio[dim_map[1]] << ' ' << 1 << '\n';
+
+  // Optional species header (read by the TurbInflow utility). Placed right
+  // after the periodicity line and before the plane offsets.
+  if (!species.empty()) {
+    ifsh << "SPECIES " << species.size();
+    for (const auto& s : species) {
+      ifsh << ' ' << s;
+    }
+    ifsh << '\n';
+  }
 
   IntVect periodicity{perio[0], perio[1], perio[2]};
   // Output FABS

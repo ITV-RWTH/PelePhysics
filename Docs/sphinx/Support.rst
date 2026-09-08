@@ -112,6 +112,13 @@ input file. The currently supported data types are :
    will match the plt files used. The valid time range also comes from these plt files. Due to the interpolation stencils used,
    the turbinflow will be valid from the timestamp of the first plt file used (inclusive) through the second last timestamp (exclusive).
 
+For the ``periodic_plt`` and ``diag_frame_plane`` data types, selected species mass fractions may additionally be projected onto the
+inflow by listing their names with the ``species`` keyword (e.g. ``species = O2 N2``). The corresponding ``Y(<name>)`` variables are
+read from the input plt file(s) and stored in the turbulence file alongside the velocity components; their names are recorded in the
+``HDR`` (a ``SPECIES <n> <name> ...`` line) so that, at runtime, the TurbInflow utility can map them to the flow solver's mechanism.
+Legacy velocity-only turbulence files remain fully compatible. See the ``TurbInflowSpecies`` example in PeleLMeX for an end-to-end
+demonstration.
+
 For all of the above data types, an ``ofile`` keyword must be specified, which is the name of the directory where the
 output files will be saved. After successful execution, the output directory should contain two files: ``HDR`` and ``DAT``.
 
