@@ -1072,8 +1072,8 @@ ReactorCvode::allocUserData(
     udata->rowVals = new int*[1];
     udata->Jdata = new amrex::Real*[1];
 
-    // Number of non zero elements in ODE system
-    SPARSITY_INFO(&(udata->NNZ), &HP, udata->ncells);
+    // Number of non zero elements per cell in ODE system
+    SPARSITY_INFO(&(udata->NNZ), &HP, 1);
     // Build Sparse Matrix for direct sparse KLU solver
     (udata->PS) = new SUNMatrix[1];
     (udata->PS)[0] = SUNSparseMatrix(
@@ -1089,8 +1089,8 @@ ReactorCvode::allocUserData(
       udata->rowVals[0], udata->colPtrs[0], &HP, udata->ncells);
 #endif
   } else if (udata->solve_type == cvode::customDirect) {
-    // Number of non zero elements in ODE system
-    SPARSITY_INFO_SYST(&(udata->NNZ), &HP, udata->ncells);
+    // Number of non zero elements per cell in ODE system
+    SPARSITY_INFO_SYST(&(udata->NNZ), &HP, 1);
     // Build the SUNmatrix as CSR sparse and fill ptrs to row/Vals
     udata->PSc = SUNSparseMatrix(
       (NUM_SPECIES + 1) * udata->ncells, (NUM_SPECIES + 1) * udata->ncells,
