@@ -217,9 +217,9 @@ def main():
     args = parser.parse_args()
 
     if args.chemistry == "heterogeneous":
-        assert (
-            args.interface_name is not None
-        ), f"""Missing --interface_name argument.See 'phases' in {args.fname}"""
+        assert args.interface_name is not None, (
+            f"""Missing --interface_name argument.See 'phases' in {args.fname}"""
+        )
 
     if args.fname:
         convert(
@@ -253,7 +253,7 @@ def main():
             args.interface_name,
         )
     end = time.time()
-    print(f"CEPTR run time: {end-start:.2f} s")
+    print(f"CEPTR run time: {end - start:.2f} s")
 
 
 if __name__ == "__main__":
