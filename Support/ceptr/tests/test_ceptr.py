@@ -1,9 +1,12 @@
 """Tests for cepter."""
 
 import math
+import os
 import pathlib
 import random
 import shutil
+import subprocess
+import sys
 
 import cantera as ct
 
@@ -89,6 +92,42 @@ def test_ch4_lean_qss(tmp_path):
     header = (tmp_path / "mechanism.H").read_text()
     assert "aJacobian" in header
     assert (tmp_path / "mechanism.cpp").exists()
+
+
+def convert_with_hash_seed(fname, out_dir, seed):
+    """Convert a copy of a mechanism in a fresh interpreter with a hash seed."""
+    out_dir.mkdir()
+    shutil.copy(fname, out_dir / "mechanism.yaml")
+    script = (
+        "import sys, cantera as ct, ceptr.converter as converter;"
+        "conv = converter.Converter(ct.Solution(sys.argv[1]), None, 'homogeneous');"
+        "conv.writer();"
+        "conv.formatter()"
+    )
+    env = dict(os.environ, PYTHONHASHSEED=str(seed))
+    subprocess.run(
+        [sys.executable, "-c", script, str(out_dir / "mechanism.yaml")],
+        env=env,
+        check=True,
+        capture_output=True,
+    )
+    return [(out_dir / f).read_text() for f in ["mechanism.H", "mechanism.cpp"]]
+
+
+def test_hash_seed_independence(tmp_path):
+    """Check that the generated code does not depend on PYTHONHASHSEED.
+
+    posf10325 has reactions with a species on both sides with different
+    coefficients (e.g. CH3 + POSF10325 => ... + 0.7 CH3 + ...), which used to
+    give the production-rate writer tied sort keys, so the order of the wdot
+    updates followed the hash-randomised set order.
+    """
+    fname = mechanism_path("posf10325") / "mechanism.yaml"
+    reference = convert_with_hash_seed(fname, tmp_path / "seed0", 0)
+    for seed in [1, 2, 3]:
+        assert (
+            convert_with_hash_seed(fname, tmp_path / f"seed{seed}", seed) == reference
+        ), f"output with PYTHONHASHSEED={seed} differs from PYTHONHASHSEED=0"
 
 
 def test_kc_exp():
