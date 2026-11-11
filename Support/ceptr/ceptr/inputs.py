@@ -30,7 +30,7 @@ class Parameter:
 
     def set_value(self, value):
         """Set value of parameter."""
-        if type(value) == self.typer:
+        if type(value) is self.typer:
             self.value = value
         elif value is None:
             self.value = value
