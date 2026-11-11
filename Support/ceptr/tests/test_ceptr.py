@@ -3,10 +3,12 @@
 import math
 import pathlib
 import random
+import shutil
 
 import cantera as ct
 
 import ceptr.converter as converter
+import ceptr.qssa as qssa
 import ceptr.utilities as cu
 from ceptr import __version__
 
@@ -57,6 +59,36 @@ def test_dodecane_lu():
     conv = converter.Converter(mechanism, interface, chemistry)
     conv.writer()
     conv.formatter()
+
+
+def test_ch4_lean_qss(tmp_path):
+    """Test QSS reduction and mechanism generation of CH4_lean_qss.
+
+    Runs the same two stages as ``qssa -lq`` and ``convert -lq`` (QSS
+    reduction of the skeletal mechanism, then conversion with the symbolic
+    QSS Jacobian) on a copy of the mechanism inputs, so the committed files
+    are left untouched.
+    """
+    mech_path = mechanism_path("CH4_lean_qss")
+    for name in ["skeletal.yaml", "non_qssa_list.yaml", "qssa_input.toml"]:
+        shutil.copy(mech_path / name, tmp_path)
+    qssa.process_qss(
+        tmp_path / "skeletal.yaml", tmp_path / "non_qssa_list.yaml", False, 2
+    )
+    mechanism = ct.Solution(tmp_path / "qssa.yaml")
+    conv = converter.Converter(
+        mechanism,
+        None,
+        "homogeneous",
+        jacobian=True,
+        qss_format_input=tmp_path / "qssa_input.toml",
+        qss_symbolic_jacobian=True,
+    )
+    conv.writer()
+    conv.formatter()
+    header = (tmp_path / "mechanism.H").read_text()
+    assert "aJacobian" in header
+    assert (tmp_path / "mechanism.cpp").exists()
 
 
 def test_kc_exp():
