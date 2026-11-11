@@ -330,7 +330,8 @@ def generate_thermo_routine(
             cw.writer(
                 fstream,
                 cw.comment(
-                    f"species with inflection points at T = {(*interval,)} kelvin"
+                    "species with inflection points at T ="
+                    f" {tuple(float(t) for t in interval)} kelvin"
                 ),
             )
         for k in range(len(interval) + 1):
