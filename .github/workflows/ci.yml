@@ -92,12 +92,10 @@ jobs:
           poetry-version: ${{matrix.poetry-version}}
       - name: Install Dependencies using Poetry
         run: poetry install
-      - name: Formatting with black
-        run: poetry run black --check .
-      - name: Sort imports with isort
-        run: poetry run isort --check-only --diff .
-      - name: Lint with flake8
-        run: poetry run flake8 .
+      - name: Format check with ruff
+        run: poetry run ruff format --check --diff .
+      - name: Lint with ruff
+        run: poetry run ruff check .
       - name: Run tests
         run: poetry run pytest
       - name: Convert air mechanism
