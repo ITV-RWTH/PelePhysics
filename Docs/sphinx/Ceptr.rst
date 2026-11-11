@@ -147,3 +147,22 @@ To generate all mechanisms::
   $ poetry run convert -l ${PELE_PHYSICS_HOME}/Mechanisms/list_mech
   $ poetry run qssa -lq ${PELE_PHYSICS_HOME}/Mechanisms/list_qss_mech
   $ poetry run convert -lq ${PELE_PHYSICS_HOME}/Mechanisms/list_qss_mech
+
+Checking that committed mechanisms are up to date
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The CI regenerates all mechanisms listed in ``Mechanisms/list_mech`` and ``Mechanisms/list_qss_mech`` and fails if the result differs from the committed files. A change to CEPTR that changes the generated code must therefore come with the regenerated mechanisms. The same check can be run locally::
+
+  $ cd ${PELE_PHYSICS_HOME}/Support/ceptr
+  $ poetry install
+  $ poetry run convert -l ${PELE_PHYSICS_HOME}/Mechanisms/list_mech
+  $ poetry run qssa -lq ${PELE_PHYSICS_HOME}/Mechanisms/list_qss_mech
+  $ poetry run convert -lq ${PELE_PHYSICS_HOME}/Mechanisms/list_qss_mech
+  $ poetry run check-mechanisms
+
+A few things to keep in mind:
+
+* ``poetry install`` installs the exact package versions recorded in ``Support/ceptr/poetry.lock``, which are the ones the CI uses. Other versions can produce different, though equivalent, code; in particular different ``symengine`` versions name and order the common subexpressions of the symbolic QSS Jacobians differently.
+* The generated code does not depend on Python's hash randomization, so ``PYTHONHASHSEED`` does not need to be set (this is covered by a test).
+* ``check-mechanisms`` tolerates differences in the last printed digits of floating-point literals, because fitted coefficients such as the transport fits are computed with numpy/LAPACK and their rounding can depend on the CPU. It also ignores the Cantera version, commit and date that Cantera writes into the header of ``qssa.yaml``. Everything else, including the order of operations, must match exactly.
+* The CI runs the check on Linux with the Python version given in ``Support/ceptr/.python-version``. If it fails, the regenerated files that differ are attached to the CI run as the ``regenerated-mechanisms`` artifact, with their paths relative to the repository root. If your machine produces different output than the CI, you can commit the files from that artifact instead.

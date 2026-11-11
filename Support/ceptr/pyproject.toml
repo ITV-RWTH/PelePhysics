@@ -32,6 +32,7 @@ build-backend = "poetry.core.masonry.api"
 [tool.poetry.scripts]
 convert = "ceptr.ceptr:main"
 qssa = "ceptr.qssa:main"
+check-mechanisms = "ceptr.check_mechanisms:main"
 
 [tool.ruff]
 line-length = 88

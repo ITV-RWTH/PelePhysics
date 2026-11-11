@@ -103,6 +103,46 @@ jobs:
       - name: Convert LiDryer mechanism
         run: poetry run convert -f ${{github.workspace}}/Mechanisms/LiDryer/mechanism.yaml
 
+  CEPTR-Regenerate-Mechanisms:
+    needs: Detect-Changes
+    if: needs['Detect-Changes'].outputs['has-source-changes'] == 'true'
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: ${{github.workspace}}/Support/ceptr
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version-file: Support/ceptr/.python-version
+      - name: Run image
+        uses: abatilo/actions-poetry@v4.0.0
+        with:
+          poetry-version: '2.5.1'
+      - name: Install Dependencies using Poetry
+        run: poetry install
+      - name: Regenerate regular mechanisms
+        run: poetry run convert -l ${{github.workspace}}/Mechanisms/list_mech
+      - name: Regenerate QSS mechanisms
+        run: |
+          poetry run qssa -lq ${{github.workspace}}/Mechanisms/list_qss_mech
+          poetry run convert -lq ${{github.workspace}}/Mechanisms/list_qss_mech
+      - name: Check that the committed mechanisms are up to date
+        run: poetry run check-mechanisms
+      - name: Collect regenerated mechanisms
+        if: failure()
+        working-directory: ${{github.workspace}}
+        run: |
+          mkdir -p ${{runner.temp}}/regenerated
+          { git diff --name-only HEAD -- Mechanisms; git ls-files --others --exclude-standard -- Mechanisms; } |
+            xargs -r cp --parents -t ${{runner.temp}}/regenerated
+      - name: Upload regenerated mechanisms
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: regenerated-mechanisms
+          path: ${{runner.temp}}/regenerated
+
   Transport-EOS-Reactions:
     needs: Detect-Changes
     if: needs['Detect-Changes'].outputs['has-source-changes'] == 'true'
