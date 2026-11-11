@@ -982,7 +982,7 @@ def production_rate(
             dict_species = {v: i for i, v in enumerate(species_info.all_species_list)}
             agents = sorted(
                 agents,
-                key=lambda v, dict_species=dict_species: dict_species[v[0]],
+                key=lambda v, dict_species=dict_species: (dict_species[v[0]], v[1]),
             )
             # Check for duplicates
             assert len(agents) == len(
@@ -1443,7 +1443,7 @@ def production_rate_light(fstream, mechanism, species_info, reaction_info):
             dict_species = {v: i for i, v in enumerate(species_info.all_species_list)}
             agents = sorted(
                 agents,
-                key=lambda v, dict_species=dict_species: dict_species[v[0]],
+                key=lambda v, dict_species=dict_species: (dict_species[v[0]], v[1]),
             )
             # Check for duplicates
             assert len(agents) == len(

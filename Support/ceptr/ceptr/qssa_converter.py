@@ -677,7 +677,7 @@ def update_group_needs(mechanism, species_info, reaction_info):
             print("... for group member: " + spec)
             # look at any additional needs that are not already
             # accounted for with the group
-            for need in list(
+            for need in sorted(
                 set(species_info.qssa_info.needs_running[spec])
                 - set(species_info.qssa_info.group[group_key])
             ):
@@ -720,7 +720,7 @@ def update_group_needs(mechanism, species_info, reaction_info):
                     update_needs_count += 1
             # look at any additional species (outside of the group)
             # that depend on the current group member
-            for needed in list(
+            for needed in sorted(
                 set(species_info.qssa_info.is_needed_running[spec])
                 - set(species_info.qssa_info.group[group_key])
             ):
